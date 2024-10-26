@@ -1,0 +1,15 @@
+# Fichiers d’environnement (ex: mots de passe)
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Dossiers de cache
+.cache/
+cache/
+
+# Docker volumes et sauvegardes
+volumes/
+backups/
