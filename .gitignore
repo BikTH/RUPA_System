@@ -7,6 +7,10 @@ data/
 /certificates/
 /.env
 
+# Certificats
+*.key
+*.pem
+
 # Logs
 *.log
 logs/
