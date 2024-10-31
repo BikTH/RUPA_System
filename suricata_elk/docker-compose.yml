@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  suricata:
+    image: jasonish/suricata:6.0.15
+    container_name: suricata
+    hostname: suricata
+    network_mode: "host"
+    #restart: always
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      #SURICATA_OPTIONS: /usr/bin/suricata -c suricata.yaml -s signatures.rules -i ${INTERFACE_RESEAU}
+    command: -i ${INTERFACE_RESEAU}
+    volumes:
+      - ./data/suricata/logs:/var/log/suricata
+      - ./data/suricata/lib:/var/lib/suricata
+      - ./config/suricata:/etc/suricata
