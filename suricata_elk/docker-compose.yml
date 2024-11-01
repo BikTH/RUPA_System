@@ -18,8 +18,9 @@ services:
     command: -i ${INTERFACE_RESEAU}
     volumes:
       - ./data/suricata/logs:/var/log/suricata
-      - ./data/suricata/lib:/var/lib/suricata
-      - ./config/suricata:/etc/suricata
+      - ./data/suricata/update:/var/lib/suricata/update
+      - ./config/suricata/rules:/var/lib/suricata/rules
+      - ./config/suricata/conf:/etc/suricata
 
   elk:
     image: sebp/elk:8.14.1
@@ -29,14 +30,21 @@ services:
       - "5601:5601" # kibana web interface
       - "9200:9200" # Elasticsearch JSON interface
       #- "9300:9300" # Elasticsearch transport interface
-      - "5044:5044" # Logstash beats interface
+      #- "5044:5044" # Logstash beats interface
+      - "5045:5045" # Logstash syslog interface
       #- "9600:9600" # Logstash API endpoint
     volumes:
       - ./data/elk/e_data_elasticsearch:/var/lib/elasticsearch
       - ./data/elk/l_data_logstash:/var/lib/logstash
+      - ./data/suricata/logs:/var/log/rupa_suricata
       - ./data/elk/e_logs_elasticsearch:/var/log/elasticsearch
       - ./data/elk/l_logs_logstash:/var/log/logstash
       - ./data/elk/k_logs_kibana:/var/log/kibana
       - ./config/elk/e_config_elasticsearch:/etc/elasticsearch
       - ./config/elk/l_config_logstash:/etc/logstash/conf.d
-      - ./config/elk/k_config_kibana:/opt/kibana/config
+      #- ./config/elk/l_config_logstash/03-local.conf:/etc/logstash/conf.d/03-input.conf
+      - ./config/elk/k_config_kibana/conf:/opt/kibana/config
+      - ./config/elk/k_config_kibana/lib:/var/lib/kibana  # Volume pour stocker les données persistantes de Kibana
+      - ./config/elk/suricata-index-pattern.json:/tmp/suricata-index-pattern.json
+    depends_on:
+      - suricata

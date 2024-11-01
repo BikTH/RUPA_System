@@ -15,7 +15,7 @@ suricata-version: "6.0"
 vars:
   # more specific is better for alert accuracy and performance
   address-groups:
-    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    HOME_NET: "[192.168.0.0/24]" # DEFAULT "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]" BY RUPA
     #HOME_NET: "[192.168.0.0/16]"
     #HOME_NET: "[10.0.0.0/8]"
     #HOME_NET: "[172.16.0.0/12]"
@@ -84,6 +84,7 @@ outputs:
       #filetype: regular # 'regular', 'unix_stream' or 'unix_dgram'
 
   # Extensible Event Format (nicknamed EVE) event log in JSON format
+  #RUPA !
   - eve-log:
       enabled: yes
       filetype: regular #regular|syslog|unix_dgram|unix_stream|redis
@@ -150,6 +151,13 @@ outputs:
         # than one IP address is present, the last IP address will be the
         # one taken into consideration.
         header: X-Forwarded-For
+      
+      #ADDED by RUPA
+      #syslog:
+        # Spécifiez les options syslog
+      #  host: 127.0.0.1  # Adresse IP de Logstash (ou localhost si sur la même machine)
+      #  port: 5045       # Port de réception des logs syslog
+      #  protocol: udp    # Utilisez 'udp' ou 'tcp' selon votre configuration Logstash
 
       types:
         - alert:
@@ -427,11 +435,11 @@ outputs:
       #null-values: yes  # print counters that have value 0. Default: no
 
   # a line based alerts log similar to fast.log into syslog
-  - syslog:
+  - syslog: #RUPA
       enabled: no
       # reported identity to syslog. If omitted the program name (usually
       # suricata) will be used.
-      #identity: "suricata"
+      identity: "rupa_suricata"
       facility: local5
       #level: Info ## possible levels: Emergency, Alert, Critical,
                    ## Error, Warning, Notice, Info, Debug
@@ -577,10 +585,21 @@ logging:
       level: info
       filename: suricata.log
       # type: json
-  - syslog:
-      enabled: no
-      facility: local5
-      format: "[%i] <%d> -- "
+  #addition by Rupa
+  #- file:
+  #    enabled: yes
+  #    level: info
+  #    filename: rupa_suricata.log
+  #    format: json
+      # type: json
+  - syslog: #RUPA _ CONF SYSLOG OUTPUT
+      enabled: no #default : no RUPA
+      facility: local1 #default : local5 RUPA
+      format: json #default : "[%i] <%d> -- " RUPA
+      level: info
+      #addition by RUPA
+      host: 127.0.0.1
+      port: 5045
       # type: json
 
 
