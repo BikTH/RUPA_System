@@ -29,3 +29,6 @@ wazuh/config/wazuh_indexer_ssl_certs/*.key
 
 #suricata
 rules/
+
+#shuffle
+shuffle-database/
