@@ -1,11 +1,52 @@
-version: '3'
-
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.2
-    ports:
-      - "8080:8080"
+    container_name: keycloak
     environment:
-      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
-      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
-    command: start-dev
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT_HTTPS=false
+      - KEYCLOAK_SSL_REQUIRED=none
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME_PORT=8080
+      - DB_VENDOR=postgres
+      - DB_ADDR=postgres
+      - DB_DATABASE=${DB_NAME} #keycloakdb
+      - DB_USER=${DB_USER} #keycloak
+      - DB_PASSWORD=${DB_PASSWORD} #keycloakdbpass
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN} #admin
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD} #adminpass
+      - KEYCLOAK_USER=${KEYCLOAK_USER} #user
+      - KEYCLOAK_PASSWORD=${KEYCLOAK_USER_PASSWORD} #userpass
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres/keycloakdb
+      - KC_DB_USERNAME=${DB_USER} #keycloak
+      - KC_DB_PASSWORD=${DB_PASSWORD} #keycloakdbpass
+    ports:
+      - 8080:8080
+      - 9000:9000
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    command: start
+    networks:
+      - keycloak_network
+
+  postgres:
+    image: postgres:16.1
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME} #keycloakdb
+      - POSTGRES_USER=${DB_USER} #keycloak
+      - POSTGRES_PASSWORD=${DB_PASSWORD} #keycloakdbpass
+    volumes:
+      - ${POSTGRES_DATA_PATH}:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
+networks:
+  keycloak_network:
+    driver: bridge
