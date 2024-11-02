@@ -45,7 +45,7 @@ services:
     hostname: wazuh.indexer
     restart: always
     ports:
-      - "9200:9200"
+      - "9300:9200"
     environment:
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
@@ -91,6 +91,55 @@ services:
       - wazuh.indexer
     networks:
       - wazuh-net
+
+  suricata:
+    image: jasonish/suricata:6.0.15
+    container_name: suricata
+    hostname: suricata
+    network_mode: "host"
+    restart: always
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      #SURICATA_OPTIONS: /usr/bin/suricata -c suricata.yaml -s signatures.rules -i ${INTERFACE_RESEAU}
+    command: -i ${INTERFACE_RESEAU}
+    volumes:
+      - ./suricata_elk/data/suricata/logs:/var/log/suricata
+      - ./suricata_elk/data/suricata/update:/var/lib/suricata/update
+      - ./suricata_elk/config/suricata/rules:/var/lib/suricata/rules
+      - ./suricata_elk/config/suricata/conf:/etc/suricata
+
+  elk:
+    image: sebp/elk:8.14.1
+    container_name: elk
+    hostname: elk
+    restart: always
+    ports:
+      - "5601:5601" # kibana web interface
+      - "9200:9200" # Elasticsearch JSON interface
+      #- "9300:9300" # Elasticsearch transport interface
+      #- "5044:5044" # Logstash beats interface
+      - "5045:5045" # Logstash syslog interface
+      #- "9600:9600" # Logstash API endpoint
+    volumes:
+      - ./suricata_elk/data/elk/e_data_elasticsearch:/var/lib/elasticsearch
+      - ./suricata_elk/data/elk/l_data_logstash:/var/lib/logstash
+      - ./suricata_elk/data/suricata/logs:/var/log/rupa_suricata
+      - ./suricata_elk/data/elk/e_logs_elasticsearch:/var/log/elasticsearch
+      - ./suricata_elk/data/elk/l_logs_logstash:/var/log/logstash
+      - ./suricata_elk/data/elk/k_logs_kibana:/var/log/kibana
+      - ./suricata_elk/config/elk/e_config_elasticsearch:/etc/elasticsearch
+      - ./suricata_elk/config/elk/l_config_logstash:/etc/logstash/conf.d
+      #- ./suricata_elk/config/elk/l_config_logstash/03-local.conf:/etc/logstash/conf.d/03-input.conf
+      - ./suricata_elk/config/elk/k_config_kibana/conf:/opt/kibana/config
+      - ./suricata_elk/config/elk/k_config_kibana/lib:/var/lib/kibana  # Volume pour stocker les données persistantes de Kibana
+      - ./suricata_elk/config/elk/suricata-index-pattern.json:/tmp/suricata-index-pattern.json
+    depends_on:
+      - suricata
 
 volumes:
   wazuh_api_configuration:
