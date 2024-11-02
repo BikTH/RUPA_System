@@ -26,3 +26,6 @@ backups/
 #Wazuh
 wazuh/config/wazuh_indexer_ssl_certs/*.pem
 wazuh/config/wazuh_indexer_ssl_certs/*.key
+
+#suricata
+rules/
