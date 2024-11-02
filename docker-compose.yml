@@ -8,6 +8,13 @@ services:
     image: wazuh/wazuh-manager:4.4.4
     hostname: wazuh.manager
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+        reservations:
+          memory: "256M"
     ports:
       - "1514:1514"
       - "1515:1515"
@@ -46,10 +53,15 @@ services:
     image: wazuh/wazuh-indexer:4.4.4
     hostname: wazuh.indexer
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1G"
     ports:
       - "9300:9200"
     environment:
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m"
     ulimits:
       memlock:
         soft: -1
@@ -121,6 +133,8 @@ services:
     container_name: elk
     hostname: elk
     restart: always
+    #environment:
+    #  - ES_JAVA_OPTS="-Xms2048m -Xmx2048m"
     ports:
       - "5601:5601" # kibana web interface
       - "9200:9200" # Elasticsearch JSON interface
@@ -143,6 +157,56 @@ services:
       - ./suricata_elk/config/elk/suricata-index-pattern.json:/tmp/suricata-index-pattern.json
     depends_on:
       - suricata
+  
+
+  ############ SSO_SERVER KEYCLOACK
+#  keycloak:
+#    image: quay.io/keycloak/keycloak:26.0.2
+#    container_name: keycloak
+#    environment:
+#      - KC_HEALTH_ENABLED=true
+#      - KC_METRICS_ENABLED=true
+#      - KC_HTTP_ENABLED=true
+#      - KC_HOSTNAME_STRICT_HTTPS=false
+#      - KEYCLOAK_SSL_REQUIRED=none
+#      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+#      - KC_HOSTNAME=localhost
+#      - KC_HOSTNAME_PORT=8080
+#      - DB_VENDOR=postgres
+#      - DB_ADDR=postgres
+#      - DB_DATABASE=${DB_NAME} #keycloakdb
+#      - DB_USER=${DB_USER} #keycloak
+#      - DB_PASSWORD=${DB_PASSWORD} #keycloakdbpass
+#      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN} #admin
+#      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD} #adminpass
+#      - KEYCLOAK_USER=${KEYCLOAK_USER} #user
+#      - KEYCLOAK_PASSWORD=${KEYCLOAK_USER_PASSWORD} #userpass
+#      - KC_DB=postgres
+#      - KC_DB_URL=jdbc:postgresql://postgres/keycloakdb
+#      - KC_DB_USERNAME=${DB_USER} #keycloak
+#      - KC_DB_PASSWORD=${DB_PASSWORD} #keycloakdbpass
+#    ports:
+#      - 8080:8080
+#      - 9000:9000
+#    depends_on:
+#      - postgres
+#    restart: unless-stopped
+#    command: start
+#    networks:
+#      - keycloak_network
+#
+#  postgres:
+#    image: postgres:16.1
+#    container_name: postgres
+#    environment:
+#      - POSTGRES_DB=${DB_NAME} #keycloakdb
+#      - POSTGRES_USER=${DB_USER} #keycloak
+#      - POSTGRES_PASSWORD=${DB_PASSWORD} #keycloakdbpass
+#    volumes:
+#      - ${POSTGRES_DATA_PATH}:/var/lib/postgresql/data
+#    restart: unless-stopped
+#    networks:
+#      - keycloak_network
   
   ############ SHUFFLE
   frontend:
@@ -198,7 +262,7 @@ services:
       #- DOCKER_HOST=tcp://docker-socket-proxy:2375
       - ENVIRONMENT_NAME=${ENVIRONMENT_NAME}
       - BASE_URL=http://${OUTER_HOSTNAME}:5001
-      - DOCKER_API_VERSION=1.40
+      #- DOCKER_API_VERSION=1.40
       - SHUFFLE_BASE_IMAGE_NAME=${SHUFFLE_BASE_IMAGE_NAME}
       - SHUFFLE_BASE_IMAGE_REGISTRY=${SHUFFLE_BASE_IMAGE_REGISTRY}
       - SHUFFLE_BASE_IMAGE_TAG_SUFFIX=${SHUFFLE_BASE_IMAGE_TAG_SUFFIX}
@@ -220,6 +284,11 @@ services:
     hostname: shuffle-opensearch
     container_name: shuffle-opensearch
     env_file: .env
+    #deploy:
+      #resources:
+      #  limits:
+      #    cpus: "1.0"
+      #    memory: "2G"
     environment:
       - "OPENSEARCH_JAVA_OPTS=-Xms2048m -Xmx2048m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
       - bootstrap.memory_lock=true
@@ -269,3 +338,5 @@ networks:
     driver: bridge
   shuffle:
     driver: bridge
+##  keycloak_network:
+##    driver: bridge
