@@ -10,6 +10,7 @@ data/
 # Certificats
 *.key
 *.pem
+*.crt
 
 # Logs
 *.log
