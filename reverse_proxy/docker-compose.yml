@@ -19,6 +19,8 @@ services:
   rupa_portal:
     build: ./rupa_portal
     container_name: rupa_portal
+    environment:
+      - SECRET_KEY=E5ZF4G6H541Z05T424254213RF4EQR84fr2ref21e
     volumes:
       - ./rupa_portal:/app
     networks:

@@ -9,12 +9,20 @@
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="{{ url_for('dashboard') }}">Portail Unifié</a>
+        <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+            <img src="{{ url_for('static', filename='img/logo_placeholder.png') }}" width="30" height="30" class="d-inline-block align-top" alt="">
+            Portail Unifié
+        </a>
         <div class="collapse navbar-collapse">
             {% if 'username' in session %}
             <ul class="navbar-nav ms-auto">
+                {% if session.get('role') == 'admin' %}
                 <li class="nav-item">
-                    <span class="navbar-text">Connecté en tant que {{ session['username'] }}</span>
+                    <a class="nav-link" href="{{ url_for('manage_users') }}">Gestion des Utilisateurs</a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <span class="navbar-text me-3">Connecté en tant que {{ session['username'] }}</span>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('logout') }}">Déconnexion</a>

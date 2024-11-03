@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Utilisateurs{% endblock %}
+{% block content %}
+<h2 class="mt-4">Gestion des Utilisateurs</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Nom d'utilisateur</th>
+            <th>Rôle</th>
+            <th>Dashboards</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user, info in users.items() %}
+        <tr>
+            <td>{{ user }}</td>
+            <td>{{ info.role }}</td>
+            <td>{{ info.dashboards | join(', ') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
