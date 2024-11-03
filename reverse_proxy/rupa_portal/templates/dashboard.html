@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Tableau de Bord - Portail Unifié{% endblock %}
+{% block content %}
+<h2>Bienvenue, {{ username }} !</h2>
+<p>Choisissez un dashboard :</p>
+<div class="btn-group mb-3" role="group">
+    <button type="button" class="btn btn-secondary" onclick="showDashboard('wazuh')">Wazuh Dashboard</button>
+    <button type="button" class="btn btn-secondary" onclick="showDashboard('kibana')">Kibana</button>
+</div>
+<div id="iframe-container" style="display: none;">
+    <iframe id="dashboard-iframe" src="" width="100%" height="800px" style="border: none;"></iframe>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    function showDashboard(dashboard) {
+        document.getElementById("iframe-container").style.display = "block";
+        if (dashboard === 'wazuh') {
+            document.getElementById("dashboard-iframe").src = "/wazuh/";
+        } else if (dashboard === 'kibana') {
+            document.getElementById("dashboard-iframe").src = "/kibana/";
+        }
+    }
+</script>
+{% endblock %}
