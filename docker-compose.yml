@@ -16,10 +16,10 @@ services:
         reservations:
           memory: "256M"
     ports:
-      - "1514:1514"
-      - "1515:1515"
-      - "514:514/udp"
-      - "55000:55000"
+      - "1514:1514" # Port de communication avec les agents Wazuh
+      # - "1515:1515" # Port communication entre composant interne de wazuh en cluster notamment
+      # - "514:514/udp" # Port utilisé pour recevoir les logs syslog de dispositif externe
+      # - "55000:55000" # port pour API WAZUH
     environment:
       - INDEXER_URL=${INDEXER_URL}
       - INDEXER_USERNAME=${INDEXER_USERNAME}
@@ -48,6 +48,7 @@ services:
       - ./wazuh/config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf
     networks:
       - wazuh-net
+      - backend
 
   wazuh.indexer:
     image: wazuh/wazuh-indexer:4.4.4
@@ -58,8 +59,8 @@ services:
         limits:
           cpus: "1.0"
           memory: "1G"
-    ports:
-      - "9300:9200"
+    # ports:
+      #- "9300:9200"
     environment:
       - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m"
     ulimits:
@@ -86,7 +87,7 @@ services:
     hostname: wazuh.dashboard
     restart: always
     ports:
-      - 443:5601
+      - 4443:5601
     environment:
       - INDEXER_USERNAME=${INDEXER_USERNAME}
       - INDEXER_PASSWORD=${INDEXER_PASSWORD}
@@ -105,6 +106,7 @@ services:
       - wazuh.indexer
     networks:
       - wazuh-net
+      - backend
 
   ############ SURICATA ELK
   suricata:
@@ -135,7 +137,7 @@ services:
     restart: always
     ports:
       - "5601:5601" # kibana web interface
-      - "9200:9200" # Elasticsearch JSON interface
+      # - "9200:9200" # Elasticsearch JSON interface
       #- "9300:9300" # Elasticsearch transport interface
       #- "5044:5044" # Logstash beats interface
       #- "5045:5045" # Logstash syslog interface
@@ -155,7 +157,67 @@ services:
       #- ./suricata_elk/config/elk/suricata-index-pattern.json:/tmp/suricata-index-pattern.json
     depends_on:
       - suricata
+    networks:
+      - backend
   
+
+  ############ REVER_PROXY + PORTAIL DE CONNEXION
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./reverse_proxy/nginx/conf:/etc/nginx/conf.d
+      - ./reverse_proxy/nginx/html:/usr/share/nginx/html
+      - ./reverse_proxy/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - elk
+      - wazuh.dashboard
+    networks:
+      - backend
+
+  # rupa_portal:
+  #   build: ./reverse_proxy/rupa_portal
+  #   container_name: rupa_portal
+  #   environment:
+  #     - SECRET_KEY=E5ZF4G6H541Z05T424254213RF4EQR84fr2ref21e
+  #   volumes:
+  #     - ./reverse_proxy/rupa_portal:/app
+  #   depends_on:
+  #     - elk
+  #     - wazuh.manager
+  #   networks:
+  #     - backend
+
+volumes:
+  wazuh_api_configuration:
+  wazuh_etc:
+  wazuh_logs:
+  wazuh_queue:
+  wazuh_var_multigroups:
+  wazuh_integrations:
+  wazuh_active_response:
+  wazuh_agentless:
+  wazuh_wodles:
+  filebeat_etc:
+  filebeat_var:
+  wazuh-indexer-data:
+
+networks:
+  wazuh-net:
+    driver: bridge
+  backend:
+    driver: bridge
+  # shuffle:
+  #   driver: bridge
+  # frontend:
+  #   driver: bridge
+  # keycloak_network:
+  #   driver: bridge
+
+
 
   ############ SSO_SERVER KEYCLOACK
 #  keycloak:
@@ -317,24 +379,3 @@ services:
   #     - wazuh.manager
   #     - wazuh.indexer
 
-volumes:
-  wazuh_api_configuration:
-  wazuh_etc:
-  wazuh_logs:
-  wazuh_queue:
-  wazuh_var_multigroups:
-  wazuh_integrations:
-  wazuh_active_response:
-  wazuh_agentless:
-  wazuh_wodles:
-  filebeat_etc:
-  filebeat_var:
-  wazuh-indexer-data:
-
-networks:
-  wazuh-net:
-    driver: bridge
-  shuffle:
-    driver: bridge
-##  keycloak_network:
-##    driver: bridge

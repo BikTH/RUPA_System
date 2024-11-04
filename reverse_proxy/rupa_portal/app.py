@@ -50,7 +50,7 @@ def login():
             session['role'] = UTILISATEURS[username]['role']
             session['dashboards'] = UTILISATEURS[username]['dashboards']
             # Créer une session sur Wazuh
-            token = create_wazuh_session(username, password)
+            token = create_wazuh_session()
             if token:
                 session['wazuh_token'] = token
                 return redirect(url_for('dashboard'))
