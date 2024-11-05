@@ -125,10 +125,9 @@ services:
       #SURICATA_OPTIONS: /usr/bin/suricata -c suricata.yaml -s signatures.rules -i ${INTERFACE_RESEAU}
     command: -i ${INTERFACE_RESEAU}
     volumes:
-      - ./suricata_elk/data/suricata/logs:/var/log/suricata
-      - ./suricata_elk/data/suricata/update:/var/lib/suricata/update
-      - ./suricata_elk/config/suricata/rules:/var/lib/suricata/rules
-      - ./suricata_elk/config/suricata/conf:/etc/suricata
+      - data_suricata_logs:/var/log/suricata
+      - data_suricata_rules-update:/var/lib/suricata
+      - ./suricata_elk/suricata:/etc/suricata
 
   elk:
     image: sebp/elk:8.14.1
@@ -137,31 +136,52 @@ services:
     restart: always
     ports:
       - "5601:5601" # kibana web interface
-      # - "9200:9200" # Elasticsearch JSON interface
+      - "9200:9200" # Elasticsearch JSON interface
       #- "9300:9300" # Elasticsearch transport interface
       #- "5044:5044" # Logstash beats interface
       #- "5045:5045" # Logstash syslog interface
       #- "9600:9600" # Logstash API endpoint
     volumes:
-      - ./suricata_elk/data/elk/e_data_elasticsearch:/var/lib/elasticsearch
-      - ./suricata_elk/data/elk/l_data_logstash:/var/lib/logstash
-      - ./suricata_elk/data/suricata:/var/log/rupa_suricata
-      - ./suricata_elk/data/elk/e_logs_elasticsearch:/var/log/elasticsearch
-      - ./suricata_elk/data/elk/l_logs_logstash:/var/log/logstash
-      - ./suricata_elk/data/elk/k_logs_kibana:/var/log/kibana
-      - ./suricata_elk/config/elk/e_config_elasticsearch:/etc/elasticsearch
-      - ./suricata_elk/config/elk/l_config_logstash:/etc/logstash/conf.d
-      #- ./suricata_elk/config/elk/l_config_logstash/03-local.conf:/etc/logstash/conf.d/03-input.conf
-      - ./suricata_elk/config/elk/k_config_kibana/conf:/opt/kibana/config
-      - ./suricata_elk/config/elk/k_config_kibana/lib:/var/lib/kibana  # Volume pour stocker les données persistantes de Kibana
-      #- ./suricata_elk/config/elk/suricata-index-pattern.json:/tmp/suricata-index-pattern.json
+      #DATA
+      - data_e_data_elasticsearch:/var/lib/elasticsearch
+      - data_l_data_logstash:/var/lib/logstash
+      - data_suricata_logs:/var/log/rupa_suricata
+      - data_e_logs_elasticsearch:/var/log/elasticsearch
+      - data_l_logs_logstash:/var/log/logstash
+      - data_k_logs_kibana:/var/log/kibana
+      #CONFIG
+      - ./suricata_elk/elk/e_config_elasticsearch:/etc/elasticsearch
+      - ./suricata_elk/elk/l_config_logstash:/etc/logstash/conf.d
+      - ./suricata_elk/elk/k_config_kibana/conf:/opt/kibana/config
+      - ./suricata_elk/elk/k_config_kibana/lib:/var/lib/kibana  
+      #CONFIG 2
+      - ./suricata_elk/elk/l_config_logstash2:/opt/logstash/config
+      - ./suricata_elk/elk/k_config_kibana2:/opt/kibana/config
+      - ./suricata_elk/elk/e_config_elasticsearch2:/opt/elasticsearch/config
+      - ./suricata_elk/elk/l_config_logstash2/logstash.yml:/etc/logstash/logstash.yml
     depends_on:
       - suricata
     networks:
       - backend
+
+  evebox:
+    image: jasonish/evebox:latest
+    container_name: evebox
+    restart: unless-stopped
+    ports:
+      - "5636:5636"
+    command: evebox server --elasticsearch http://elk:9200 --index suricata-*
+    volumes:
+    - ./suricata_elk/config/evebox/evebox.yaml:/etc/evebox.yaml
+    - evebox-data:/data
+    networks:
+      - backend
+    depends_on:
+      - elk
+
   
 
-  ############ REVER_PROXY + PORTAIL DE CONNEXION
+  ############ REVERSE_PROXY + PORTAIL DE CONNEXION
   nginx:
     image: nginx:latest
     container_name: nginx
@@ -192,6 +212,7 @@ services:
   #     - backend
 
 volumes:
+  #VOLUMES WAZUH
   wazuh_api_configuration:
   wazuh_etc:
   wazuh_logs:
@@ -204,6 +225,16 @@ volumes:
   filebeat_etc:
   filebeat_var:
   wazuh-indexer-data:
+  #VOLUMES SURICATA + ELK + EVEBOX
+  evebox-data:
+  data_e_data_elasticsearch:
+  data_e_logs_elasticsearch:
+  data_l_data_logstash:
+  data_l_logs_logstash:
+  data_k_logs_kibana:
+  data_suricata_logs:
+  data_suricata_rules-update:
+
 
 networks:
   wazuh-net:
