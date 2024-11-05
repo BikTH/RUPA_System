@@ -2,24 +2,22 @@
 #version: '3.7'
 
 services:
-
-  ############ WAZUH
   wazuh.manager:
-    image: wazuh/wazuh-manager:4.4.4
+    image: wazuh/wazuh-manager:4.9.2
     hostname: wazuh.manager
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: "512M"
-        reservations:
-          memory: "256M"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 655360
+        hard: 655360
     ports:
       - "1514:1514" # Port de communication avec les agents Wazuh
-      # - "1515:1515" # Port communication entre composant interne de wazuh en cluster notamment
+      - "1515:1515" # Port for enrollment via automatic agent request.
       # - "514:514/udp" # Port utilisé pour recevoir les logs syslog de dispositif externe
-      # - "55000:55000" # port pour API WAZUH
+      - "55000:55000" # for enrollment via Wazuh server API.
     environment:
       - INDEXER_URL=${INDEXER_URL}
       - INDEXER_USERNAME=${INDEXER_USERNAME}
@@ -51,18 +49,13 @@ services:
       - backend
 
   wazuh.indexer:
-    image: wazuh/wazuh-indexer:4.4.4
+    image: wazuh/wazuh-indexer:4.9.2
     hostname: wazuh.indexer
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: "1G"
     # ports:
-      #- "9300:9200"
+    #   - "9200:9200"
     environment:
-      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
     ulimits:
       memlock:
         soft: -1
@@ -83,7 +76,7 @@ services:
       - wazuh-net
 
   wazuh.dashboard:
-    image: wazuh/wazuh-dashboard:4.4.4
+    image: wazuh/wazuh-dashboard:4.9.2
     hostname: wazuh.dashboard
     restart: always
     ports:
@@ -102,6 +95,8 @@ services:
       - ./wazuh/config/wazuh_indexer_ssl_certs/root-ca.pem:/usr/share/wazuh-dashboard/certs/root-ca.pem
       - ./wazuh/config/wazuh_dashboard/opensearch_dashboards.yml:/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml
       - ./wazuh/config/wazuh_dashboard/wazuh.yml:/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+      - wazuh-dashboard-config:/usr/share/wazuh-dashboard/data/wazuh/config
+      - wazuh-dashboard-custom:/usr/share/wazuh-dashboard/plugins/wazuh/public/assets/custom
     depends_on:
       - wazuh.indexer
     networks:
@@ -225,6 +220,8 @@ volumes:
   filebeat_etc:
   filebeat_var:
   wazuh-indexer-data:
+  wazuh-dashboard-config:
+  wazuh-dashboard-custom:
   #VOLUMES SURICATA + ELK + EVEBOX
   evebox-data:
   data_e_data_elasticsearch:
