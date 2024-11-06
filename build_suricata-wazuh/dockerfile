@@ -11,7 +11,7 @@ RUN cd /tmp/ && \
 
 # Télécharger et installer l'agent Wazuh
 RUN curl -o wazuh-agent-4.9.2-1.x86_64.rpm https://packages.wazuh.com/4.x/yum/wazuh-agent-4.9.2-1.x86_64.rpm && \
-    WAZUH_AGENT_NAME='suricata' rpm -ihv wazuh-agent-4.9.2-1.x86_64.rpm &&\
+    WAZUH_AGENT_GROUP='default,Suricata' WAZUH_AGENT_NAME='suricata' rpm -ihv wazuh-agent-4.9.2-1.x86_64.rpm &&\
     rm wazuh-agent-4.9.2-1.x86_64.rpm
 
 # Définir une variable d'environnement par défaut
