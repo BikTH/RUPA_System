@@ -17,6 +17,9 @@ RUN curl -o wazuh-agent-4.9.2-1.x86_64.rpm https://packages.wazuh.com/4.x/yum/wa
 # Définir une variable d'environnement par défaut
 ENV WAZUH_MANAGER_IP="127.0.0.1"
 
+# Définir une variable d'environnement par défaut
+ENV INT_TO_LISTEN="eth0"
+
 # Copier le script de démarrage
 COPY starter.sh /usr/local/bin/starter.sh
 RUN chmod +x /usr/local/bin/starter.sh
@@ -29,7 +32,7 @@ COPY ossec.conf /var/ossec/etc/ossec.conf
 EXPOSE 1514/tcp
 
 # Commande de démarrage
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/starter.sh"]
 
 # # Commande de démarrage de l'agent Wazuh et de Suricata
 # CMD service wazuh-agent start && suricata -c /etc/suricata/suricata.yaml
