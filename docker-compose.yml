@@ -16,7 +16,7 @@ services:
     ports:
       - "1514:1514" # Port de communication avec les agents Wazuh
       - "1515:1515" # Port for enrollment via automatic agent request.
-      # - "514:514/udp" # Port utilisé pour recevoir les logs syslog de dispositif externe
+      - "514:514/udp" # Port utilisé pour recevoir les logs syslog de dispositif externe
       - "55000:55000" # for enrollment via Wazuh server API.
     environment:
       - INDEXER_URL=${INDEXER_URL}
@@ -43,7 +43,8 @@ services:
       - ./wazuh/config/wazuh_indexer_ssl_certs/root-ca-manager.pem:/etc/ssl/root-ca.pem
       - ./wazuh/config/wazuh_indexer_ssl_certs/wazuh.manager.pem:/etc/ssl/filebeat.pem
       - ./wazuh/config/wazuh_indexer_ssl_certs/wazuh.manager-key.pem:/etc/ssl/filebeat.key
-      - ./wazuh/config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./wazuh/config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.config
+      # - data_suricata_logs:/var/log/rupa_suricata
     networks:
       - wazuh-net
       - backend
@@ -52,8 +53,8 @@ services:
     image: wazuh/wazuh-indexer:4.9.2
     hostname: wazuh.indexer
     restart: always
-    # ports:
-    #   - "9200:9200"
+    ports:
+      - "9200:9200"
     environment:
       - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
     ulimits:
@@ -103,13 +104,14 @@ services:
       - wazuh-net
       - backend
 
-  ############ SURICATA ELK
-  suricata:
-    image: jasonish/suricata:6.0.15
-    container_name: suricata
-    hostname: suricata
-    network_mode: "host"
+  wazuh.suricata:
+    image: rupa/suricata-wazuh:latest
+    container_name: wazuh.suricata
     restart: always
+    hostname: wazuh.suricata
+    network_mode: "host"
+    # ports:
+    #   - 1520:1514
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -117,69 +119,20 @@ services:
     environment:
       PUID: ${PUID}
       PGID: ${PGID}
-      #SURICATA_OPTIONS: /usr/bin/suricata -c suricata.yaml -s signatures.rules -i ${INTERFACE_RESEAU}
-    command: -i ${INTERFACE_RESEAU}
+      WAZUH_MANAGER_IP: ${WAZUH_MANAGER_URL}
+      INT_TO_LISTEN: ${INTERFACE_RESEAU}
     volumes:
-      - data_suricata_logs:/var/log/suricata
-      - data_suricata_rules-update:/var/lib/suricata
-      - ./suricata_elk/suricata:/etc/suricata
-
-  elk:
-    image: sebp/elk:8.14.1
-    container_name: elk
-    hostname: elk
-    restart: always
-    ports:
-      - "5601:5601" # kibana web interface
-      - "9200:9200" # Elasticsearch JSON interface
-      #- "9300:9300" # Elasticsearch transport interface
-      #- "5044:5044" # Logstash beats interface
-      #- "5045:5045" # Logstash syslog interface
-      #- "9600:9600" # Logstash API endpoint
-    volumes:
-      #DATA
-      - data_e_data_elasticsearch:/var/lib/elasticsearch
-      - data_l_data_logstash:/var/lib/logstash
-      - data_suricata_logs:/var/log/rupa_suricata
-      - data_e_logs_elasticsearch:/var/log/elasticsearch
-      - data_l_logs_logstash:/var/log/logstash
-      - data_k_logs_kibana:/var/log/kibana
-      #CONFIG
-      - ./suricata_elk/elk/e_config_elasticsearch:/etc/elasticsearch
-      - ./suricata_elk/elk/l_config_logstash:/etc/logstash/conf.d
-      - ./suricata_elk/elk/k_config_kibana/conf:/opt/kibana/config
-      - ./suricata_elk/elk/k_config_kibana/lib:/var/lib/kibana  
-      #CONFIG 2
-      - ./suricata_elk/elk/l_config_logstash2:/opt/logstash/config
-      - ./suricata_elk/elk/k_config_kibana2:/opt/kibana/config
-      - ./suricata_elk/elk/e_config_elasticsearch2:/opt/elasticsearch/config
-      - ./suricata_elk/elk/l_config_logstash2/logstash.yml:/etc/logstash/logstash.yml
+      - data_wazuh-suricata_logs:/var/log/suricata
+      - data_wazuh-suricata_rules-update:/var/lib/suricata
+      - ./wazuh/config/wazuh_suricata:/etc/suricata
     depends_on:
-      - suricata
-    networks:
-      - backend
-
-  evebox:
-    image: jasonish/evebox:latest
-    container_name: evebox
-    restart: unless-stopped
-    ports:
-      - "5636:5636"
-    command: evebox server --elasticsearch http://elk:9200 --index suricata-*
-    volumes:
-    - ./suricata_elk/config/evebox/evebox.yaml:/etc/evebox.yaml
-    - evebox-data:/data
-    networks:
-      - backend
-    depends_on:
-      - elk
-
-  
+      - wazuh.dashboard
 
   ############ REVERSE_PROXY + PORTAIL DE CONNEXION
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: always
     ports:
       - "80:80"
       - "443:443"
@@ -188,8 +141,7 @@ services:
       - ./reverse_proxy/nginx/html:/usr/share/nginx/html
       - ./reverse_proxy/nginx/ssl:/etc/nginx/ssl
     depends_on:
-      - elk
-      - wazuh.dashboard
+      - wazuh.suricata
     networks:
       - backend
 
@@ -222,15 +174,17 @@ volumes:
   wazuh-indexer-data:
   wazuh-dashboard-config:
   wazuh-dashboard-custom:
-  #VOLUMES SURICATA + ELK + EVEBOX
-  evebox-data:
-  data_e_data_elasticsearch:
-  data_e_logs_elasticsearch:
-  data_l_data_logstash:
-  data_l_logs_logstash:
-  data_k_logs_kibana:
-  data_suricata_logs:
-  data_suricata_rules-update:
+  data_wazuh-suricata_logs:
+  data_wazuh-suricata_rules-update:
+  # #VOLUMES SURICATA + ELK + EVEBOX
+  # evebox-data:
+  # data_e_data_elasticsearch:
+  # data_e_logs_elasticsearch:
+  # data_l_data_logstash:
+  # data_l_logs_logstash:
+  # data_k_logs_kibana:
+  # data_suricata_logs:
+  # data_suricata_rules-update:
 
 
 networks:
@@ -245,6 +199,76 @@ networks:
   # keycloak_network:
   #   driver: bridge
 
+  # ############ SURICATA ELK
+  # suricata:
+  #   image: jasonish/suricata:6.0.15
+  #   container_name: suricata
+  #   hostname: suricata
+  #   network_mode: "host"
+  #   restart: always
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_RAW
+  #     - SYS_NICE
+  #   environment:
+  #     PUID: ${PUID}
+  #     PGID: ${PGID}
+  #     #SURICATA_OPTIONS: /usr/bin/suricata -c suricata.yaml -s signatures.rules -i ${INTERFACE_RESEAU}
+  #   command: -i ${INTERFACE_RESEAU}
+  #   volumes:
+  #     - data_suricata_logs:/var/log/suricata
+  #     - data_suricata_rules-update:/var/lib/suricata
+  #     - ./suricata_elk/suricata:/etc/suricata
+
+  # elk:
+  #   image: sebp/elk:8.14.1
+  #   container_name: elk
+  #   hostname: elk
+  #   restart: always
+  #   ports:
+  #     - "5601:5601" # kibana web interface
+  #     - "9200:9200" # Elasticsearch JSON interface
+  #     #- "9300:9300" # Elasticsearch transport interface
+  #     #- "5044:5044" # Logstash beats interface
+  #     #- "5045:5045" # Logstash syslog interface
+  #     #- "9600:9600" # Logstash API endpoint
+  #   volumes:
+  #     #DATA
+  #     - data_e_data_elasticsearch:/var/lib/elasticsearch
+  #     - data_l_data_logstash:/var/lib/logstash
+  #     - data_suricata_logs:/var/log/rupa_suricata
+  #     - data_e_logs_elasticsearch:/var/log/elasticsearch
+  #     - data_l_logs_logstash:/var/log/logstash
+  #     - data_k_logs_kibana:/var/log/kibana
+  #     #CONFIG
+  #     - ./suricata_elk/elk/e_config_elasticsearch:/etc/elasticsearch
+  #     - ./suricata_elk/elk/l_config_logstash:/etc/logstash/conf.d
+  #     - ./suricata_elk/elk/k_config_kibana/conf:/opt/kibana/config
+  #     - ./suricata_elk/elk/k_config_kibana/lib:/var/lib/kibana  
+  #     #CONFIG 2
+  #     - ./suricata_elk/elk/l_config_logstash2:/opt/logstash/config
+  #     - ./suricata_elk/elk/k_config_kibana2:/opt/kibana/config
+  #     - ./suricata_elk/elk/e_config_elasticsearch2:/opt/elasticsearch/config
+  #     - ./suricata_elk/elk/l_config_logstash2/logstash.yml:/etc/logstash/logstash.yml
+  #   depends_on:
+  #     - suricata
+  #   networks:
+  #     - backend
+
+  # evebox:
+  #   image: jasonish/evebox:latest
+  #   container_name: evebox
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5636:5636"
+  #   command: evebox server --elasticsearch http://elk:9200 --index suricata-*
+  #   volumes:
+  #   - ./suricata_elk/config/evebox/evebox.yaml:/etc/evebox.yaml
+  #   - evebox-data:/data
+  #   networks:
+  #     - backend
+  #   depends_on:
+  #     - elk
 
 
   ############ SSO_SERVER KEYCLOACK
