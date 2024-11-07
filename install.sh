@@ -1,31 +1,31 @@
 #!/bin/bash
 
 # 1. DEBUT DE L'INSTALLATION
-echo "''*************************************************''";
-echo "''                                                 ''";
-echo "''   RESPONSE UNIFIED PREVENTION & ANALYSIS SYSTEM ''";
-echo "''                V1.1.6                           ''";
-echo "''                                                 ''";
-echo "''*************************************************''";
+echo "''*************************************************''"
+echo "''                                                 ''"
+echo "''   RESPONSE UNIFIED PREVENTION & ANALYSIS SYSTEM ''"
+echo "''                V1.1.6                           ''"
+echo "''                                                 ''"
+echo "''*************************************************''"
 echo "
-echo " ____    __  __  ____    ______                      ";
-echo "/\  _`\ /\ \/\ \/\  _`\ /\  _  \                     ";
-echo "\ \ \L\ \ \ \ \ \ \ \L\ \ \ \L\ \                    ";
-echo " \ \ ,  /\ \ \ \ \ \ ,__/\ \  __ \                   ";
-echo "  \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \                  ";
-echo "   \ \_\ \_\ \_____\ \_\   \ \_\ \_\                 ";
-echo "    \/_/\/ /\/_____/\/_/    \/_/\/_/                 ";
-echo "                                                     ";
-echo "                                                     ";
-echo " ____                     __                         ";
-echo "/\  _`\                  /\ \__                      ";
-echo "\ \,\L\_\  __  __    ____\ \ ,_\    __    ___ ___    ";
-echo " \/_\__ \ /\ \/\ \  /',__\\ \ \/  /'__`\/' __` __`\  ";
-echo "   /\ \L\ \ \ \_\ \/\__, `\\ \ \_/\  __//\ \/\ \/\ \ ";
-echo "   \ `\____\/`____ \/\____/ \ \__\ \____\ \_\ \_\ \_\";
-echo "    \/_____/`/___/> \/___/   \/__/\/____/\/_/\/_/\/_/";
-echo "               /\___/                                ";
-echo "               \/__/                                 ";
+echo " ____    __  __  ____    ______                      "
+echo "/\  _`\ /\ \/\ \/\  _`\ /\  _  \                     "
+echo "\ \ \L\ \ \ \ \ \ \ \L\ \ \ \L\ \                    "
+echo " \ \ ,  /\ \ \ \ \ \ ,__/\ \  __ \                   "
+echo "  \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \                  "
+echo "   \ \_\ \_\ \_____\ \_\   \ \_\ \_\                 "
+echo "    \/_/\/ /\/_____/\/_/    \/_/\/_/                 "
+echo "                                                     "
+echo "                                                     "
+echo " ____                     __                         "
+echo "/\  _`\                  /\ \__                      "
+echo "\ \,\L\_\  __  __    ____\ \ ,_\    __    ___ ___    "
+echo " \/_\__ \ /\ \/\ \  /',__\\ \ \/  /'__`\/' __` __`\  "
+echo "   /\ \L\ \ \ \_\ \/\__, `\\ \ \_/\  __//\ \/\ \/\ \ "
+echo "   \ `\____\/`____ \/\____/ \ \__\ \____\ \_\ \_\ \_\"
+echo "    \/_____/`/___/> \/___/   \/__/\/____/\/_/\/_/\/_/"
+echo "               /\___/                                "
+echo "               \/__/                                 "
 
 echo "-----------------------------------------------------"
 echo "           INITIATION DE L'INSTALLATION              "
@@ -374,4 +374,600 @@ fi
 echo "-----------------------------------------------------------"
 echo "   CONFIGURATION TERMINÉE. PRÊT POUR LE DÉPLOIEMENT.      "
 echo "-----------------------------------------------------------"
+
+# 12. Lancement de la plateforme Docker
+echo ">>> Lancement de la plateforme Docker..."
+docker-compose up -d
+
+echo ">>> Attente du démarrage des conteneurs..."
+# Vous pouvez ajuster le temps d'attente si nécessaire
+sleep 360 #Attendre 6 minutes
+
+# 13. Vérification que tous les conteneurs fonctionnent correctement
+
+echo ">>> Vérification de l'état des conteneurs Docker..."
+
+# Récupérer la liste des conteneurs définis dans docker-compose
+CONTAINERS=$(docker-compose ps -q)
+
+# Initialiser un indicateur d'erreur
+ERROR_FOUND=0
+
+for CONTAINER_ID in $CONTAINERS; do
+    CONTAINER_NAME=$(docker inspect --format='{{.Name}}' $CONTAINER_ID | sed 's/^\///')
+    CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' $CONTAINER_ID)
+    if [ "$CONTAINER_STATUS" != "running" ]; then
+        echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
+        ERROR_FOUND=1
+    else
+        echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
+    fi
+done
+
+if [ $ERROR_FOUND -eq 1 ]; then
+    echo "Erreur : Un ou plusieurs conteneurs ne fonctionnent pas correctement."
+    echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
+    exit 1
+else
+    echo "Tous les conteneurs fonctionnent correctement."
+fi
+
+echo "-----------------------------------------------------------"
+echo "           CONFIGURATION POST - DEPLOIEMENT.               "
+echo "-----------------------------------------------------------"
+
+# 14. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
+
+read -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
+
+# Validation de l'entrée utilisateur
+while [[ ! "$POST_INSTALL_CHOICE" =~ ^[YyNn]$ ]]; do
+    echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
+    read -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
+done
+
+if [[ "$POST_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
+    echo ">>> Début des configurations post-installation..."
+else
+    echo ">>> Configuration post-installation ignorée."
+    echo "Installation terminée."
+    echo "Installation terminée."
+    exit 0
+fi
+
+
+# 15. Configuration des e-mails dans Wazuh
+
+echo ">>> Configuration des e-mails pour les alertes dans Wazuh..."
+
+# Demander les informations SMTP à l'utilisateur
+read -p "Entrez le serveur SMTP (exemple : smtp.votre_domaine.com) : " SMTP_SERVER
+
+# Validation de l'adresse du serveur SMTP
+while [[ ! "$SMTP_SERVER" =~ ^[a-zA-Z0-9._%-]+\.[a-zA-Z]{2,6}$ ]]; do
+    echo "Adresse du serveur SMTP invalide. Veuillez réessayer."
+    read -p "Entrez le serveur SMTP (exemple : smtp.votre_domaine.com) : " SMTP_SERVER
+done
+
+read -p "Entrez le port SMTP (par défaut 587) : " SMTP_PORT
+SMTP_PORT=${SMTP_PORT:-587}
+
+# Vérifier que le port est un nombre entre 1 et 65535
+while ! [[ "$SMTP_PORT" =~ ^[0-9]+$ ]] || [ "$SMTP_PORT" -lt 1 ] || [ "$SMTP_PORT" -gt 65535 ]; do
+    echo "Port SMTP invalide. Veuillez entrer un nombre entre 1 et 65535."
+    read -p "Entrez le port SMTP (par défaut 587) : " SMTP_PORT
+done
+
+read -p "Utilisez-vous une connexion sécurisée (TLS/SSL) ? (y/n) : " SMTP_SECURE
+
+# Validation de l'entrée utilisateur
+while [[ ! "$SMTP_SECURE" =~ ^[YyNn]$ ]]; do
+    echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
+    read -p "Utilisez-vous une connexion sécurisée (TLS/SSL) ? (y/n) : " SMTP_SECURE
+done
+
+read -p "Entrez l'adresse e-mail de l'expéditeur : " EMAIL_FROM
+
+# Validation de l'adresse e-mail
+while [[ ! "$EMAIL_FROM" =~ ^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$ ]]; do
+    echo "Adresse e-mail invalide. Veuillez réessayer."
+    read -p "Entrez l'adresse e-mail de l'expéditeur : " EMAIL_FROM
+done
+
+read -p "Entrez l'adresse e-mail du destinataire : " EMAIL_TO
+
+# Validation de l'adresse e-mail
+while [[ ! "$EMAIL_TO" =~ ^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$ ]]; do
+    echo "Adresse e-mail invalide. Veuillez réessayer."
+    read -p "Entrez l'adresse e-mail du destinataire : " EMAIL_TO
+done
+
+read -p "Le serveur SMTP nécessite-t-il une authentification ? (y/n) : " SMTP_AUTH
+
+# Validation de l'entrée utilisateur
+while [[ ! "$SMTP_AUTH" =~ ^[YyNn]$ ]]; do
+    echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
+    read -p "Le serveur SMTP nécessite-t-il une authentification ? (y/n) : " SMTP_AUTH
+done
+
+if [[ "$SMTP_AUTH" =~ ^[Yy]$ ]]; then
+    read -p "Entrez le nom d'utilisateur SMTP : " SMTP_USER
+    read -s -p "Entrez le mot de passe SMTP : " SMTP_PASS
+    echo
+fi
+
+# 16. Appliquer la configuration des e-mails dans Wazuh
+
+echo ">>> Application de la configuration des e-mails dans Wazuh..."
+
+# Générer le bloc de configuration XML pour les e-mails
+EMAIL_CONFIG="<global>
+  <email_notification>yes</email_notification>
+  <email_from>${EMAIL_FROM}</email_from>
+  <smtp_server>${SMTP_SERVER}</smtp_server>
+  <smtp_port>${SMTP_PORT}</smtp_port>
+  <email_to>${EMAIL_TO}</email_to>
+  <email_alert_level>7</email_alert_level>
+"
+
+if [[ "$SMTP_SECURE" =~ ^[Yy]$ ]]; then
+    EMAIL_CONFIG+="  <smtp_secure>yes</smtp_secure>
+"
+else
+    EMAIL_CONFIG+="  <smtp_secure>no</smtp_secure>
+"
+fi
+
+if [[ "$SMTP_AUTH" =~ ^[Yy]$ ]]; then
+    EMAIL_CONFIG+="  <smtp_auth>yes</smtp_auth>
+  <smtp_user>${SMTP_USER}</smtp_user>
+  <smtp_password>${SMTP_PASS}</smtp_password>
+"
+else
+    EMAIL_CONFIG+="  <smtp_auth>no</smtp_auth>
+"
+fi
+
+EMAIL_CONFIG+="</global>"
+
+# Créer un fichier temporaire avec la configuration
+echo "$EMAIL_CONFIG" > email_config.xml
+
+# Copier le fichier dans le conteneur
+docker cp email_config.xml wazuh.manager:/var/ossec/etc/shared/email_config.xml
+
+# Supprimer le fichier temporaire
+rm email_config.xml
+
+# Modifier le fichier ossec.conf dans le conteneur
+docker exec -it wazuh.manager bash -c "sed -i '/<\/ossec_config>/i \<include>shared/email_config.xml\</include>' /var/ossec/etc/ossec.conf"
+
+# Redémarrer le service Wazuh Manager
+echo ">>> Redémarrage du service Wazuh Manager..."
+docker exec -it wazuh.manager bash -c "service wazuh-manager restart"
+
+echo ">>> Configuration presque terminée."
+sleep 30
+
+echo ">>> Configuration des e-mails dans Wazuh terminée."
+
+# 17. Envoi d'un e-mail de test
+
+echo ">>> Envoi d'un e-mail de test..."
+
+# Créer un script d'envoi d'e-mail de test
+TEST_EMAIL_SCRIPT="echo 'Test e-mail from Wazuh Manager' | mail -s 'Wazuh Test Email' ${EMAIL_TO}"
+
+# Exécuter le script dans le conteneur
+docker exec -it wazuh.manager bash -c "$TEST_EMAIL_SCRIPT"
+
+echo "Un e-mail de test a été envoyé à ${EMAIL_TO}. Veuillez vérifier votre boîte de réception."
+echo "Remarque : Si l'envoi de l'e-mail de test échoue, il faudra vérifier la configuration SMTP et les logs du conteneur Wazuh.Manager."
+echo "Ou reconfigurer wazuh pour l'envoie de mail via le dashboard"
+
+# 18. Création de workflows de réponse dans Shuffle
+
+echo ">>> Création de workflows de réponse dans Shuffle..."
+
+# Demander les informations pour l'API Wazuh
+read -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000 ou https://<IP_SERVEUR>:55000 ) : " WAZUH_API_URL
+
+# Validation de l'URL
+while [[ ! "$WAZUH_API_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; do
+    echo "URL invalide. Veuillez réessayer."
+    read -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000 ou https://<IP_SERVEUR>:55000) : " WAZUH_API_URL
+done
+
+# Demander le nom d'utilisateur et le mot de passe de l'API Wazuh
+read -p "Entrez le nom d'utilisateur de l'API Wazuh (par défaut: wazuh-wui) : " WAZUH_API_USER
+read -s -p "Entrez le mot de passe de l'API Wazuh (par défaut: MyS3cr37P450r.*-) : " WAZUH_API_PASS
+echo
+
+# Ajouter l'application Wazuh dans Shuffle via l'API Shuffle
+echo ">>> Configuration de l'application Wazuh dans Shuffle..."
+
+SHUFFLE_BACKEND_URL="http://localhost:${GLOBAL_VARS["BACKEND_PORT"]}"
+
+# Créer une application Wazuh dans Shuffle
+curl -X POST "${SHUFFLE_BACKEND_URL}/api/v1/apps" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "Wazuh",
+        "app": "wazuh",
+        "fields": {
+            "url": "'"${WAZUH_API_URL}"'",
+            "username": "'"${WAZUH_API_USER}"'",
+            "password": "'"${WAZUH_API_PASS}"'",
+            "ssl_verify": false
+        }
+    }'
+
+echo ">>> Application Wazuh configurée dans Shuffle."
+
+# Intégration avec Mikrotik
+echo ">>> Configuration de l'application Mikrotik dans Shuffle..."
+
+read -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
+
+# Validation de l'adresse IP
+while ! [[ "$MIKROTIK_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; do
+    echo "Adresse IP invalide. Veuillez réessayer."
+    read -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
+done
+
+read -p "Entrez le nom d'utilisateur du routeur Mikrotik : " MIKROTIK_USER
+read -s -p "Entrez le mot de passe du routeur Mikrotik : " MIKROTIK_PASS
+echo
+
+# Ajouter l'application Mikrotik dans Shuffle
+curl -X POST "${SHUFFLE_BACKEND_URL}/api/v1/apps" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "Mikrotik",
+        "app": "mikrotik",
+        "fields": {
+            "host": "'"${MIKROTIK_IP}"'",
+            "username": "'"${MIKROTIK_USER}"'",
+            "password": "'"${MIKROTIK_PASS}"'"
+        }
+    }'
+
+echo ">>> Application Mikrotik configurée dans Shuffle."
+
+#!/bin/bash
+
+# ... (Parties précédentes du script)
+
+# 21. Préconfiguration des workflows dans Shuffle
+
+echo ">>> Préconfiguration des workflows dans Shuffle..."
+
+# Fonction pour valider les entrées utilisateur (par exemple, adresses e-mail)
+validate_email() {
+    local EMAIL=$1
+    if [[ "$EMAIL" =~ ^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Demander l'adresse e-mail pour l'envoi des rapports
+read -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
+while ! validate_email "$INCIDENT_EMAIL"; do
+    echo "Adresse e-mail invalide. Veuillez réessayer."
+    read -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
+done
+
+# Configuration de Shuffle pour interroger Wazuh et Evebox à interval régulier
+
+SHUFFLE_BACKEND_URL="http://localhost:${BACKEND_PORT}"
+
+# Vérifier que Shuffle est accessible
+echo ">>> Vérification de l'accessibilité de Shuffle Backend..."
+
+if curl --output /dev/null --silent --head --fail "$SHUFFLE_BACKEND_URL"; then
+    echo "Shuffle Backend est accessible."
+else
+    echo "Erreur : Shuffle Backend n'est pas accessible. Veuillez vérifier que le conteneur est en cours d'exécution."
+    exit 1
+fi
+
+# Créer un utilisateur par défaut dans Shuffle si nécessaire
+# Vous pouvez personnaliser le nom d'utilisateur et le mot de passe
+SHUFFLE_DEFAULT_USERNAME="admin"
+SHUFFLE_DEFAULT_PASSWORD="admin"
+
+# Authentification auprès de l'API Shuffle
+echo ">>> Authentification auprès de l'API Shuffle..."
+
+SHUFFLE_AUTH_RESPONSE=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/auth" \
+    -H "Content-Type: application/json" \
+    -d '{"username": "'"$SHUFFLE_DEFAULT_USERNAME"'", "password": "'"$SHUFFLE_DEFAULT_PASSWORD"'"}')
+
+SHUFFLE_API_KEY=$(echo "$SHUFFLE_AUTH_RESPONSE" | jq -r '.access_token')
+
+if [ "$SHUFFLE_API_KEY" == "null" ]; then
+    echo "Erreur : Impossible de s'authentifier auprès de Shuffle. Vérifiez les identifiants."
+    exit 1
+else
+    echo "Authentification réussie."
+fi
+
+# Ajouter l'application Wazuh dans Shuffle
+echo ">>> Configuration de l'application Wazuh dans Shuffle..."
+
+WAZUH_APP_CONFIG=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/apps" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SHUFFLE_API_KEY" \
+    -d '{
+        "name": "Wazuh",
+        "app": "wazuh",
+        "fields": {
+            "url": "https://wazuh.manager:55000",
+            "username": "'"$API_USERNAME"'",
+            "password": "'"$API_PASSWORD"'",
+            "ssl_verify": false
+        }
+    }')
+
+WAZUH_APP_ID=$(echo "$WAZUH_APP_CONFIG" | jq -r '.appid')
+
+if [ "$WAZUH_APP_ID" == "null" ]; then
+    echo "Erreur : Échec de la configuration de l'application Wazuh dans Shuffle."
+    exit 1
+else
+    echo "Application Wazuh configurée avec succès dans Shuffle."
+fi
+
+# Ajouter l'application Mikrotik dans Shuffle
+echo ">>> Configuration de l'application Mikrotik dans Shuffle..."
+
+# Demander les informations Mikrotik à l'utilisateur
+read -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
+while ! [[ "$MIKROTIK_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; do
+    echo "Adresse IP invalide. Veuillez réessayer."
+    read -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
+done
+
+read -p "Entrez le nom d'utilisateur du routeur Mikrotik : " MIKROTIK_USER
+read -s -p "Entrez le mot de passe du routeur Mikrotik : " MIKROTIK_PASS
+echo
+
+MIKROTIK_APP_CONFIG=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/apps" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SHUFFLE_API_KEY" \
+    -d '{
+        "name": "Mikrotik",
+        "app": "mikrotik",
+        "fields": {
+            "host": "'"$MIKROTIK_IP"'",
+            "username": "'"$MIKROTIK_USER"'",
+            "password": "'"$MIKROTIK_PASS"'"
+        }
+    }')
+
+MIKROTIK_APP_ID=$(echo "$MIKROTIK_APP_CONFIG" | jq -r '.appid')
+
+if [ "$MIKROTIK_APP_ID" == "null" ]; then
+    echo "Erreur : Échec de la configuration de l'application Mikrotik dans Shuffle."
+    exit 1
+else
+    echo "Application Mikrotik configurée avec succès dans Shuffle."
+fi
+
+# Importer les workflows prédéfinis
+
+echo ">>> Importation des workflows prédéfinis dans Shuffle..."
+
+# Préparer les workflows JSON
+WORKFLOW_TERMINAL='{
+    "name": "Réponse aux incidents sur les terminaux",
+    "description": "Workflow de réponse aux incidents sur les terminaux via Wazuh et Mikrotik.",
+    "workflow": {
+        "nodes": [
+            {
+                "id": "1",
+                "app_id": "'"$WAZUH_APP_ID"'",
+                "action": "get_alerts",
+                "name": "Get Alerts from Wazuh",
+                "parameters": {
+                    "interval": "5m"
+                }
+            },
+            {
+                "id": "2",
+                "app_id": "'"$MIKROTIK_APP_ID"'",
+                "action": "block_ip",
+                "name": "Block Victim Terminal",
+                "parameters": {
+                    "ip": "{{node.1.data.alert.source.ip}}"
+                }
+            },
+            {
+                "id": "3",
+                "app_id": "email",
+                "action": "send_email",
+                "name": "Send Incident Report",
+                "parameters": {
+                    "to": "'"$INCIDENT_EMAIL"'",
+                    "subject": "Incident Report - Terminal",
+                    "body": "Incident detected and actions taken."
+                }
+            }
+        ],
+        "edges": [
+            {"source": "1", "target": "2"},
+            {"source": "2", "target": "3"}
+        ]
+    }
+}'
+
+WORKFLOW_RESEAU='{
+    "name": "Réponse aux incidents réseau",
+    "description": "Workflow de réponse aux incidents réseau via Suricata, Wazuh et Mikrotik.",
+    "workflow": {
+        "nodes": [
+            {
+                "id": "1",
+                "app_id": "'"$WAZUH_APP_ID"'",
+                "action": "get_alerts",
+                "name": "Get Alerts from Wazuh (Suricata)",
+                "parameters": {
+                    "interval": "5m",
+                    "query": "rule.groups:suricata"
+                }
+            },
+            {
+                "id": "2",
+                "app_id": "'"$MIKROTIK_APP_ID"'",
+                "action": "block_ip",
+                "name": "Block Malicious IP",
+                "parameters": {
+                    "ip": "{{node.1.data.alert.source.ip}}"
+                }
+            },
+            {
+                "id": "3",
+                "app_id": "email",
+                "action": "send_email",
+                "name": "Send Incident Report",
+                "parameters": {
+                    "to": "'"$INCIDENT_EMAIL"'",
+                    "subject": "Incident Report - Network",
+                    "body": "Network incident detected and actions taken."
+                }
+            }
+        ],
+        "edges": [
+            {"source": "1", "target": "2"},
+            {"source": "2", "target": "3"}
+        ]
+    }
+}'
+
+# Importer le workflow pour les incidents sur les terminaux
+TERMINAL_WORKFLOW_RESPONSE=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/workflows" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SHUFFLE_API_KEY" \
+    -d "$WORKFLOW_TERMINAL")
+
+TERMINAL_WORKFLOW_ID=$(echo "$TERMINAL_WORKFLOW_RESPONSE" | jq -r '.workflow_id')
+
+if [ "$TERMINAL_WORKFLOW_ID" == "null" ]; then
+    echo "Erreur : Échec de l'importation du workflow des incidents sur les terminaux."
+else
+    echo "Workflow des incidents sur les terminaux importé avec succès. ID: $TERMINAL_WORKFLOW_ID"
+fi
+
+# Importer le workflow pour les incidents réseau
+RESEAU_WORKFLOW_RESPONSE=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/workflows" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SHUFFLE_API_KEY" \
+    -d "$WORKFLOW_RESEAU")
+
+RESEAU_WORKFLOW_ID=$(echo "$RESEAU_WORKFLOW_RESPONSE" | jq -r '.workflow_id')
+
+if [ "$RESEAU_WORKFLOW_ID" == "null" ]; then
+    echo "Erreur : Échec de l'importation du workflow des incidents réseau."
+else
+    echo "Workflow des incidents réseau importé avec succès. ID: $RESEAU_WORKFLOW_ID"
+fi
+
+# Activer les workflows pour qu'ils s'exécutent à interval régulier
+echo ">>> Activation des workflows pour une exécution programmée..."
+
+# Pour le workflow des incidents sur les terminaux
+curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/workflows/$TERMINAL_WORKFLOW_ID/schedule" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SHUFFLE_API_KEY" \
+    -d '{
+        "interval": "5m"
+    }'
+
+# Pour le workflow des incidents réseau
+curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/workflows/$RESEAU_WORKFLOW_ID/schedule" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SHUFFLE_API_KEY" \
+    -d '{
+        "interval": "5m"
+    }'
+
+echo ">>> Workflows activés avec succès."
+
+# 22. Affichage des identifiants par défaut et du message de fin
+
+echo "-----------------------------------------------------------"
+echo "        INSTALLATION TERMINÉE AVEC SUCCÈS                  "
+echo "-----------------------------------------------------------"
+
+# Affichage de l'ASCII art de remerciement
+
+echo " __                                                         "
+echo "/\ \                             __                         "
+echo "\ \ \         __     __   __  __/\_\  _____      __         "
+echo " \ \ \  __  /'__`\ /'__`\/\ \/\ \/\ \/\ '__`\  /'__`\       "
+echo "  \ \ \L\ \/\  __//\ \L\ \ \ \_\ \ \ \ \ \L\ \/\  __/       "
+echo "   \ \____/\ \____\ \___, \ \____/\ \_\ \ ,__/\ \____\      "
+echo "    \/___/  \/____/\/___/\ \/___/  \/_/\ \ \/  \/____/      "
+echo "                        \ \_\           \ \_\               "
+echo "                         \/_/            \/_/               "
+echo "  __          ____    __  __  ____    ______        __      "
+echo " _\ \ _      /\  _`\ /\ \/\ \/\  _`\ /\  _  \      _\ \ _   "
+echo "/\_` ' \     \ \ \L\ \ \ \ \ \ \ \L\ \ \ \L\ \    /\_` ' \  "
+echo "\/_>   <_     \ \ ,  /\ \ \ \ \ \ ,__/\ \  __ \   \/_>   <_ "
+echo "  /\_, ,_\     \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \    /\_, ,_\"
+echo "  \/_/\_\/      \ \_\ \_\ \_____\ \_\   \ \_\ \_\   \/_/\_\/"
+echo "     \/_/        \/_/\/ /\/_____/\/_/    \/_/\/_/      \/_/ "
+echo "                                                            "
+echo "                                                            "
+echo " ____                     __                                "
+echo "/\  _`\                  /\ \__                             "
+echo "\ \,\L\_\  __  __    ____\ \ ,_\    __    ___ ___           "
+echo " \/_\__ \ /\ \/\ \  /',__\\ \ \/  /'__`\/' __` __`\         "
+echo "   /\ \L\ \ \ \_\ \/\__, `\\ \ \_/\  __//\ \/\ \/\ \        "
+echo "   \ `\____\/`____ \/\____/ \ \__\ \____\ \_\ \_\ \_\       "
+echo "    \/_____/`/___/> \/___/   \/__/\/____/\/_/\/_/\/_/       "
+echo "               /\___/                                       "
+echo "               \/__/                                        "
+echo " __  __                                                     "
+echo "/\ \/\ \                                                    "
+echo "\ \ \ \ \    ___   __  __    ____                           "
+echo " \ \ \ \ \  / __`\/\ \/\ \  /',__\                          "
+echo "  \ \ \_/ \/\ \L\ \ \ \_\ \/\__, `\                         "
+echo "   \ `\___/\ \____/\ \____/\/\____/                         "
+echo "    `\/__/  \/___/  \/___/  \/___/                          "
+echo "                                                            "
+echo "                                                            "
+echo "                                                            "
+echo "                                             __             "
+echo " _ __    __    ___ ___      __   _ __   ___ /\_\     __     "
+echo "/\`'__\/'__`\/' __` __`\  /'__`\/\`'__\/'___\/\ \  /'__`\   "
+echo "\ \ \//\  __//\ \/\ \/\ \/\  __/\ \ \//\ \__/\ \ \/\  __/   "
+echo " \ \_\\ \____\ \_\ \_\ \_\ \____\\ \_\\ \____\\ \_\ \____\  "
+echo "  \/_/ \/____/\/_/\/_/\/_/\/____/ \/_/ \/____/ \/_/\/____/  "
+echo "                                                            "
+echo "                                                            "
+echo "-------------------------------------------------------------"
+
+
+echo "Accédez à la plateforme via : https://$SERVICES_IP"
+
+echo "Identifiants WAZUH par défaut :"
+echo "Nom d'utilisateur : admin"
+echo "Mot de passe : SecretPassword"
+
+echo "Identifiants SHUFFLE par défaut :"
+echo "Nom d'utilisateur : $SHUFFLE_DEFAULT_USERNAME"
+echo "Mot de passe : $SHUFFLE_DEFAULT_PASSWORD"
+
+echo "Merci d'avoir installé RUPA System !"
+
+
+
+
+
+
+
+
 
