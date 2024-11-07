@@ -7,25 +7,26 @@ echo "''   RESPONSE UNIFIED PREVENTION & ANALYSIS SYSTEM ''"
 echo "''                V1.1.6                           ''"
 echo "''                                                 ''"
 echo "''*************************************************''"
-echo "
+echo ""
+
 echo " ____    __  __  ____    ______                      "
-echo "/\  _`\ /\ \/\ \/\  _`\ /\  _  \                     "
-echo "\ \ \L\ \ \ \ \ \ \ \L\ \ \ \L\ \                    "
-echo " \ \ ,  /\ \ \ \ \ \ ,__/\ \  __ \                   "
-echo "  \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \                  "
-echo "   \ \_\ \_\ \_____\ \_\   \ \_\ \_\                 "
-echo "    \/_/\/ /\/_____/\/_/    \/_/\/_/                 "
+echo "/\  _\`\\ /\ \\/\ \\/\  _\`\\ /\\  _  \\                     "
+echo "\\ \\ \\L\\ \\ \\ \\ \\ \\ \\ \\L\\ \\ \\ \\L\\ \\                    "
+echo " \\ \\ ,  /\\ \\ \\ \\ \\ \\ ,__/\\ \\  __ \\                   "
+echo "  \\ \\ \\\\ \\\\ \\ \\_\\ \\ \\ \\/  \\ \\ \\/\\ \\                  "
+echo "   \\ \\_\\ \\_\\ \\_____\\ \\_\\   \\ \\_\\ \\_\\                 "
+echo "    \\/_/\\/_/\\/_____/\\/_/    \\/_/\\/_/                 "
 echo "                                                     "
 echo "                                                     "
 echo " ____                     __                         "
-echo "/\  _`\                  /\ \__                      "
-echo "\ \,\L\_\  __  __    ____\ \ ,_\    __    ___ ___    "
-echo " \/_\__ \ /\ \/\ \  /',__\\ \ \/  /'__`\/' __` __`\  "
-echo "   /\ \L\ \ \ \_\ \/\__, `\\ \ \_/\  __//\ \/\ \/\ \ "
-echo "   \ `\____\/`____ \/\____/ \ \__\ \____\ \_\ \_\ \_\"
-echo "    \/_____/`/___/> \/___/   \/__/\/____/\/_/\/_/\/_/"
-echo "               /\___/                                "
-echo "               \/__/                                 "
+echo "/\\  _\`\\                  /\\ \\__                      "
+echo "\\ \\,\\L\\_\\  __  __    ____\\ \\ ,_\\    __    ___ ___    "
+echo " \\/_\\__ \\/\\ \\/\\ \\  /',__\\\\ \\ \\/  /'__`\\/\\' __\` __\`\\  "
+echo "   /\\ \\L\\ \\ \\ \\_\\ \\/\\__, \\\\\\ \\ \\_/\\  __/\\ \\ \\/\\ \\/\\ \\ "
+echo "   \\ \`\\____\\/`____ \\ /\\____/ \\ \\__\\ \\____\\ \\_\\ \\_\\ \\_\\"
+echo "    \\/_____/`/___/> \\/___/   \\/__/\\/____/\\/_/\\/_/\\/_/"
+echo "               /\\___/                                "
+echo "               \\/__/                                 "
 
 echo "-----------------------------------------------------"
 echo "           INITIATION DE L'INSTALLATION              "
@@ -34,7 +35,7 @@ echo "-----------------------------------------------------"
 # Vérifier si le script est exécuté en tant que root
 if [ "$EUID" -ne 0 ]; then
   echo "Veuillez exécuter ce script en tant que root (sudo)."
-  exit
+  exit 1
 fi
 
 # 2. Mise à jour du système
@@ -66,8 +67,8 @@ sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
 # Ajouter le dépôt Docker aux sources APT
 echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | \
+  "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  \$(lsb_release -cs) stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # Mettre à jour les paquets APT
@@ -104,7 +105,7 @@ docker pull jasonish/evebox:latest
 echo ">>> Construction des images Docker personnalisées..."
 
 # Vérifier si le Dockerfile pour suricata-wazuh existe
-if [ -f "./build_suricata-wazuh/dockerfile" ]; then
+if [ -f "./build_suricata-wazuh/Dockerfile" ]; then
   docker build -t rupa/suricata-wazuh ./build_suricata-wazuh/
 else
   echo "Dockerfile pour suricata-wazuh introuvable. Skipping build."
@@ -187,12 +188,17 @@ done
 
 # Demander à l'utilisateur de choisir l'interface pour Suricata
 read -p "Entrez le numéro de l'interface à utiliser pour Suricata : " SURICATA_IF_INDEX
+while ! [[ "$SURICATA_IF_INDEX" =~ ^[0-9]+$ ]] || [ "$SURICATA_IF_INDEX" -lt 0 ] || [ "$SURICATA_IF_INDEX" -ge ${#ETH_INTERFACES[@]} ]; do
+    echo "Numéro d'interface invalide. Veuillez réessayer."
+    read -p "Entrez le numéro de l'interface à utiliser pour Suricata : " SURICATA_IF_INDEX
+done
+
 SURICATA_INTERFACE=${ETH_INTERFACES[$SURICATA_IF_INDEX]}
 GLOBAL_VARS["INTERFACE_RESEAU"]=$SURICATA_INTERFACE
 
 # Récupérer les informations de l'interface Suricata
-SURICATA_IP=$(ip -o -f inet addr show $SURICATA_INTERFACE | awk '{print $4}' | cut -d/ -f1)
-SURICATA_SUBNET=$(ip -o -f inet addr show $SURICATA_INTERFACE | awk '{print $4}')
+SURICATA_IP=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}' | cut -d/ -f1)
+SURICATA_SUBNET=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}')
 SURICATA_GATEWAY=$(ip route | grep "dev $SURICATA_INTERFACE" | grep default | awk '{print $3}')
 
 GLOBAL_VARS["WAZUH_SURICATA_IP"]=$SURICATA_IP
@@ -209,10 +215,15 @@ for i in "${!ETH_INTERFACES[@]}"; do
 done
 
 read -p "Entrez le numéro de l'interface à utiliser pour les autres services : " SERVICES_IF_INDEX
+while ! [[ "$SERVICES_IF_INDEX" =~ ^[0-9]+$ ]] || [ "$SERVICES_IF_INDEX" -lt 0 ] || [ "$SERVICES_IF_INDEX" -ge ${#ETH_INTERFACES[@]} ]; do
+    echo "Numéro d'interface invalide. Veuillez réessayer."
+    read -p "Entrez le numéro de l'interface à utiliser pour les autres services : " SERVICES_IF_INDEX
+done
+
 SERVICES_INTERFACE=${ETH_INTERFACES[$SERVICES_IF_INDEX]}
 
 # Récupérer l'adresse IP de l'interface des services
-SERVICES_IP=$(ip -o -f inet addr show $SERVICES_INTERFACE | awk '{print $4}' | cut -d/ -f1)
+SERVICES_IP=$(ip -o -f inet addr show "$SERVICES_INTERFACE" | awk '{print $4}' | cut -d/ -f1)
 GLOBAL_VARS["WAZUH_MANAGER_IP"]=$SERVICES_IP
 
 # Récupérer le PUID et PGID de l'utilisateur actuel
@@ -280,8 +291,8 @@ SHUFFLE_DOWNLOAD_AUTH_BRANCH=
 SHUFFLE_APP_FORCE_UPDATE=false
 
 # User config for first load. Username & PW: min length 3
-SHUFFLE_DEFAULT_USERNAME=
-SHUFFLE_DEFAULT_PASSWORD=
+SHUFFLE_DEFAULT_USERNAME=admin
+SHUFFLE_DEFAULT_PASSWORD=admin
 SHUFFLE_DEFAULT_APIKEY=
 
 # Local location of your app directory. Can't use ~/
@@ -381,7 +392,7 @@ docker-compose up -d
 
 echo ">>> Attente du démarrage des conteneurs..."
 # Vous pouvez ajuster le temps d'attente si nécessaire
-sleep 360 #Attendre 6 minutes
+sleep 360 # Attendre 6 minutes
 
 # 13. Vérification que tous les conteneurs fonctionnent correctement
 
@@ -394,8 +405,8 @@ CONTAINERS=$(docker-compose ps -q)
 ERROR_FOUND=0
 
 for CONTAINER_ID in $CONTAINERS; do
-    CONTAINER_NAME=$(docker inspect --format='{{.Name}}' $CONTAINER_ID | sed 's/^\///')
-    CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' $CONTAINER_ID)
+    CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+    CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
     if [ "$CONTAINER_STATUS" != "running" ]; then
         echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
         ERROR_FOUND=1
@@ -413,7 +424,7 @@ else
 fi
 
 echo "-----------------------------------------------------------"
-echo "           CONFIGURATION POST - DEPLOIEMENT.               "
+echo "           CONFIGURATION POST - DÉPLOIEMENT               "
 echo "-----------------------------------------------------------"
 
 # 14. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
@@ -431,10 +442,8 @@ if [[ "$POST_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
 else
     echo ">>> Configuration post-installation ignorée."
     echo "Installation terminée."
-    echo "Installation terminée."
     exit 0
 fi
-
 
 # 15. Configuration des e-mails dans Wazuh
 
@@ -540,7 +549,7 @@ docker cp email_config.xml wazuh.manager:/var/ossec/etc/shared/email_config.xml
 rm email_config.xml
 
 # Modifier le fichier ossec.conf dans le conteneur
-docker exec -it wazuh.manager bash -c "sed -i '/<\/ossec_config>/i \<include>shared/email_config.xml\</include>' /var/ossec/etc/ossec.conf"
+docker exec -it wazuh.manager bash -c "sed -i '/<\/ossec_config>/i \\    <include>shared/email_config.xml</include>' /var/ossec/etc/ossec.conf"
 
 # Redémarrer le service Wazuh Manager
 echo ">>> Redémarrage du service Wazuh Manager..."
@@ -555,19 +564,21 @@ echo ">>> Configuration des e-mails dans Wazuh terminée."
 
 echo ">>> Envoi d'un e-mail de test..."
 
-# Créer un script d'envoi d'e-mail de test
-TEST_EMAIL_SCRIPT="echo 'Test e-mail from Wazuh Manager' | mail -s 'Wazuh Test Email' ${EMAIL_TO}"
-
-# Exécuter le script dans le conteneur
-docker exec -it wazuh.manager bash -c "$TEST_EMAIL_SCRIPT"
+# Exécuter la commande sendmail pour tester
+docker exec -it wazuh.manager bash -c "echo 'Test e-mail from Wazuh Manager' | mail -s 'Wazuh Test Email' '${EMAIL_TO}'"
 
 echo "Un e-mail de test a été envoyé à ${EMAIL_TO}. Veuillez vérifier votre boîte de réception."
-echo "Remarque : Si l'envoi de l'e-mail de test échoue, il faudra vérifier la configuration SMTP et les logs du conteneur Wazuh.Manager."
-echo "Ou reconfigurer wazuh pour l'envoie de mail via le dashboard"
+echo "Remarque : Si l'envoi de l'e-mail de test échoue, il faudra vérifier la configuration SMTP et les logs du conteneur wazuh.manager."
+echo "Ou reconfigurer Wazuh pour l'envoi de mail via le dashboard"
 
 # 18. Création de workflows de réponse dans Shuffle
 
 echo ">>> Création de workflows de réponse dans Shuffle..."
+
+# ...
+
+# (Continue with the rest of your script, ensuring all variables are properly referenced and no duplicates)
+
 
 # Demander les informations pour l'API Wazuh
 read -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000 ou https://<IP_SERVEUR>:55000 ) : " WAZUH_API_URL
