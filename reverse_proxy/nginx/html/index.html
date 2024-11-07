@@ -2,18 +2,85 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Bienvenue sur notre Plateforme de Sécurité</title>
-    <link rel="stylesheet" href="style.css">
+    <title>RUPA System</title>
+    <link rel="icon" href="images/favico.png" type="image/x-icon">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Bienvenue sur notre Plateforme de Sécurité</h1>
-        <p>Veuillez choisir l'application que vous souhaitez ouvrir :</p>
-        <div class="buttons">
-            <a href="https://localhost:4443" target="_blank" rel="noopener noreferrer" class="btn">Wazuh Dashboard</a>
-            <a href="https://localhost:5636" target="_blank" rel="noopener noreferrer" class="btn">EVEBOX</a>
-            <a href="https://localhost:3443" target="_blank" rel="noopener noreferrer" class="btn">SHUFFLE</a>
+    <header>
+         <!-- Espace pour le logo de l'entreprise -->
+         <!-- <div id="company-logo">
+            <img src="img/PDC_Logo2.png" alt="Logo de l'entreprise">
+        </div> -->
+        <a href="/"></pre><pre id="logo">
+            ____    __  __  ____    ______                      
+           /\  _`\ /\ \/\ \/\  _`\ /\  _  \                     
+           \ \ \L\ \ \ \ \ \ \ \L\ \ \ \L\ \                    
+            \ \ ,  /\ \ \ \ \ \ ,__/\ \  __ \                   
+             \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \                  
+              \ \_\ \_\ \_____\ \_\   \ \_\ \_\                 
+               \/_/\/ /\/_____/\/_/    \/_/\/_/                 
+                                                                
+                                                                
+            ____                     __                         
+           /\  _`\                  /\ \__                      
+           \ \,\L\_\  __  __    ____\ \ ,_\    __    ___ ___    
+            \/_\__ \ /\ \/\ \  /',__\\ \ \/  /'__`\/' __` __`\  
+              /\ \L\ \ \ \_\ \/\__, `\\ \ \_/\  __//\ \/\ \/\ \ 
+               \ `\____\/`____ \/\____/ \ \__\ \____\ \_\ \_\ \_\
+                \/_____/`/___/> \/___/   \/__/\/____/\/_/\/_/\/_/
+                           /\___/                                
+                           \/__/                                 
+        </pre></a>
+        <!-- Signification de l'acronyme RUPA -->
+        <!-- <div id="acronym-meaning">
+            <p>Response Unified Prevention and Analysis System</p>
+        </div> -->
+        <!-- <nav>
+            <ul>
+                <li><a href="#">Accueil</a></li>
+                <li><a href="#">Applications</a></li>
+                <li><a href="#">Support</a></li>
+                <li><a href="#">Profil</a></li>
+            </ul>
+        </nav> -->
+    </header>
+    <main>
+        <h1>Bienvenue sur RUPA System</h1>
+        <p>Votre solution intégrée de surveillance, analyse et réponse aux incidents.</p>
+        <div class="applications">
+            <!-- Carte pour Wazuh -->
+            <div class="application-card">
+                <div class="icon"><img src="img/wazuh.svg" alt="Wazuh"></div>
+                <h2>Wazuh</h2>
+                <p>Surveillance des terminaux pour détecter les menaces et les vulnérabilités.</p>
+                <a href="https://localhost:4443" target="_blank" class="access-button">Accéder</a>
+            </div>
+            <!-- Carte pour Suricata EVE-log -->
+            <div class="application-card">
+                <div class="icon"><img src="img/suricata.png" alt="Suricata"></div>
+                <h2>Suricata EVE-log</h2>
+                <p>Analyse du trafic réseau pour identifier les activités suspectes.</p>
+                <a href="https://localhost:5636" target="_blank" class="access-button">Accéder</a>
+            </div>
+            <!-- Carte pour Shuffle -->
+            <div class="application-card">
+                <div class="icon"><img src="img/shuffle.jpg" alt="Shuffle"></div>
+                <h2>Shuffle</h2>
+                <p>Orchestration automatisée pour une réponse rapide aux incidents.</p>
+                <a href="https://localhost:3443" target="_blank" class="access-button">Accéder</a>
+            </div>
+            <!-- Carte pour la Documentation -->
+            <div class="application-card">
+                <div class="icon"><img src="img/docu.webp" alt="Documentation"></div>
+                <h2>Documentation</h2>
+                <p>Guides et ressources pour utiliser efficacement la plateforme.</p>
+                <a href="documentation/index.html" class="access-button">Accéder</a>
+            </div>
         </div>
-    </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 RUPA System | <a href="#">Mentions légales</a> | <a href="#">Contact</a> | <a href="#">Twitter</a> | <a href="#">LinkedIn</a></p>
+    </footer>
 </body>
 </html>

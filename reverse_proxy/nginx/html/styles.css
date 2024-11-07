@@ -1,0 +1,240 @@
+/* Déclarations des polices locales */
+@font-face {
+    font-family: 'Roboto';
+    src: url('fonts/Roboto-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Roboto';
+    src: url('fonts/Roboto-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Montserrat';
+    src: url('fonts/Montserrat-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Montserrat';
+    src: url('fonts/Montserrat-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* Styles généraux */
+body {
+    background-color: #2e2e2e; /* Fond sombre mais pas trop */
+    color: #f3f4f6;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* En-tête */
+header {
+    background-color: #1e3a8a; /* Bleu Marine */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#company-logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#company-logo img {
+    max-width: 200px; /* Ajustez la taille selon vos besoins */
+}
+
+#logo {
+    color: #f3f4f6;
+    font-family: monospace;
+    text-align: center;
+    white-space: pre;
+    margin-bottom: 10px;
+}
+
+#acronym-meaning {
+    text-align: center;
+    font-size: 14px;
+    color: #d1d5db;
+    margin-top: -20px; /* Pour rapprocher du logo ASCII */
+    margin-bottom: 20px;
+    font-family: 'Roboto', sans-serif;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    margin: 0 15px;
+}
+
+nav ul li a {
+    color: #f3f4f6;
+    text-decoration: none;
+    font-weight: bold;
+    font-family: 'Montserrat', sans-serif;
+}
+
+nav ul li a:hover {
+    color: #3b82f6; /* Bleu Ciel */
+}
+
+/* Corps principal */
+main {
+    text-align: center;
+    padding: 50px 20px;
+}
+
+h1 {
+    font-size: 32px;
+    font-family: 'Montserrat', sans-serif;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
+
+p {
+    font-size: 16px;
+    color: #d1d5db;
+    margin-bottom: 40px;
+}
+
+/* Cartes d'application */
+.applications {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.application-card {
+    background-color: #374151; /* Gris Foncé */
+    border-radius: 8px;
+    width: 250px;
+    margin: 20px;
+    padding: 20px;
+    color: #ffffff;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s;
+}
+
+.application-card:hover {
+    background-color: #4b5563; /* Légèrement plus clair au survol */
+}
+
+.application-card .icon {
+    margin-bottom: 15px;
+}
+
+.application-card .icon img {
+    max-width:40%;
+}
+
+.application-card h2 {
+    font-size: 20px;
+    font-family: 'Montserrat', sans-serif;
+    margin-bottom: 10px;
+}
+
+.application-card p {
+    font-size: 14px;
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+
+.access-button {
+    background-color: #3b82f6; /* Bleu Ciel */
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    margin-top: auto; /* Pousse le bouton vers le bas */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.access-button:hover {
+    background-color: #2563eb; /* Bleu Ciel foncé */
+}
+
+
+/* Sections de Documentation */
+.documentation-section {
+    background-color: #374151; /* Gris Foncé */
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 800px;
+    text-align: left;
+    color: #f3f4f6;
+}
+
+.documentation-section h2 {
+    font-size: 24px;
+    font-family: 'Montserrat', sans-serif;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
+
+.documentation-section ul {
+    list-style-type: disc;
+    margin-left: 20px;
+}
+
+.documentation-section a {
+    color: #3b82f6; /* Bleu Ciel */
+    text-decoration: none;
+}
+
+.documentation-section a:hover {
+    text-decoration: underline;
+}
+
+
+/* Pied de page */
+footer {
+    background-color: #1e3a8a; /* Bleu Marine */
+    color: #f3f4f6;
+    text-align: center;
+    padding: 15px;
+}
+
+footer a {
+    color: #f3f4f6;
+    text-decoration: none;
+    margin: 0 10px;
+}
+
+footer a:hover {
+    color: #3b82f6; /* Bleu Ciel */
+}
+
+/* Liens */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .applications {
+        flex-direction: column;
+        align-items: center;
+    }
+}
