@@ -21,7 +21,7 @@ http:
 authentication:
   # Default: false
   # env: EVEBOX_AUTHENTICATION_REQUIRED
-  required: true
+  required: false
 
 # Event services: links that will be provided on events to link to additonal
 # services.

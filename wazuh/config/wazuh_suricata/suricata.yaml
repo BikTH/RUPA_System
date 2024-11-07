@@ -15,14 +15,14 @@ suricata-version: "6.0"
 vars:
   # more specific is better for alert accuracy and performance
   address-groups:
-    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]" # DEFAULT BY RUPA "[192.168.0.0/24]"
+    HOME_NET: "[192.168.0.104/24]" # DEFAULT BY RUPA  "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
     #HOME_NET: "[192.168.0.0/16]"
     #HOME_NET: "[10.0.0.0/8]"
     #HOME_NET: "[172.16.0.0/12]"
     #HOME_NET: "any"
 
-    EXTERNAL_NET: "!$HOME_NET"
-    #EXTERNAL_NET: "any"
+    # EXTERNAL_NET: "!$HOME_NET"
+    EXTERNAL_NET: "any"
 
     HTTP_SERVERS: "$HOME_NET"
     SMTP_SERVERS: "$HOME_NET"
@@ -1988,8 +1988,8 @@ default-rule-path: /etc/suricata_rules #ADD BY RUPA BY DEFAULT /var/lib/suricata
 
 rule-files:
   - "*.rules" #Addition by RUPA
-  - /var/lib/suricata/rules/local.rules #Addition by RUPA
-  # - /var/lib/suricata/rules/suricata.rules #Default info here RUPA
+  - "/var/lib/suricata/rules/local.rules" #Addition by RUPA
+  # - "/var/lib/suricata/rules/*.rules" #Default info here RUPA suricata.rules
   
 
 ##
