@@ -7,26 +7,7 @@ echo "''   RESPONSE UNIFIED PREVENTION & ANALYSIS SYSTEM ''"
 echo "''                V1.1.6                           ''"
 echo "''                                                 ''"
 echo "''*************************************************''"
-echo ""
 
-echo " ____    __  __  ____    ______                      "
-echo "/\  _\`\\ /\ \\/\ \\/\  _\`\\ /\\  _  \\                     "
-echo "\\ \\ \\L\\ \\ \\ \\ \\ \\ \\ \\L\\ \\ \\ \\L\\ \\                    "
-echo " \\ \\ ,  /\\ \\ \\ \\ \\ \\ ,__/\\ \\  __ \\                   "
-echo "  \\ \\ \\\\ \\\\ \\ \\_\\ \\ \\ \\/  \\ \\ \\/\\ \\                  "
-echo "   \\ \\_\\ \\_\\ \\_____\\ \\_\\   \\ \\_\\ \\_\\                 "
-echo "    \\/_/\\/_/\\/_____/\\/_/    \\/_/\\/_/                 "
-echo "                                                     "
-echo "                                                     "
-echo " ____                     __                         "
-echo "/\\  _\`\\                  /\\ \\__                      "
-echo "\\ \\,\\L\\_\\  __  __    ____\\ \\ ,_\\    __    ___ ___    "
-echo " \\/_\\__ \\/\\ \\/\\ \\  /',__\\\\ \\ \\/  /'__`\\/\\' __\` __\`\\  "
-echo "   /\\ \\L\\ \\ \\ \\_\\ \\/\\__, \\\\\\ \\ \\_/\\  __/\\ \\ \\/\\ \\/\\ \\ "
-echo "   \\ \`\\____\\/`____ \\ /\\____/ \\ \\__\\ \\____\\ \\_\\ \\_\\ \\_\\"
-echo "    \\/_____/`/___/> \\/___/   \\/__/\\/____/\\/_/\\/_/\\/_/"
-echo "               /\\___/                                "
-echo "               \\/__/                                 "
 
 echo "-----------------------------------------------------"
 echo "           INITIATION DE L'INSTALLATION              "
@@ -88,7 +69,7 @@ if ! command -v docker &> /dev/null; then
     fi
 
     # Ajouter l'utilisateur actuel au groupe docker
-    usermod -aG docker $USER
+    usermod -aG docker "$USER"
 else
     echo "Docker est déjà installé. Skipping installation."
 fi
@@ -109,10 +90,10 @@ IMAGES=(
 )
 
 for IMAGE in "${IMAGES[@]}"; do
-    if [[ "$(docker images -q $IMAGE 2> /dev/null)" == "" ]]; then
-        docker pull $IMAGE
+    if [[ "$(docker images -q "$IMAGE" 2> /dev/null)" == "" ]]; then
+        docker pull "$IMAGE"
     else
-        echo "Image $IMAGE déjà présente localement."
+        echo "Image \"$IMAGE\" déjà présente localement."
     fi
 done
 
@@ -169,13 +150,13 @@ mkdir -p reverse_proxy/nginx/ssl
 # Demander les informations pour le certificat SSL
 echo ">>> Génération des certificats SSL pour le portail RUPA..."
 
-read -p "Entrez le nom de votre organisation : " ORG_NAME
+read -r -p "Entrez le nom de votre organisation : " ORG_NAME
 GLOBAL_VARS["ORG_NAME"]=$ORG_NAME
 
-read -p "Entrez le nom de votre unité organisationnelle : " ORG_UNIT
+read -r -p "Entrez le nom de votre unité organisationnelle : " ORG_UNIT
 GLOBAL_VARS["ORG_UNIT"]=$ORG_UNIT
 
-read -p "Entrez votre adresse e-mail : " EMAIL_ADDRESS
+read -r -p "Entrez votre adresse e-mail : " EMAIL_ADDRESS
 GLOBAL_VARS["EMAIL_ADDRESS"]=$EMAIL_ADDRESS
 
 # Générer le certificat SSL auto-signé
@@ -189,7 +170,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 echo ">>> Détection des interfaces réseau disponibles..."
 
 # Lister les interfaces réseau Ethernet disponibles
-ETH_INTERFACES=($(ls /sys/class/net | grep -E '^(e|en|eth)[a-z0-9]+$'))
+mapfile -t ETH_INTERFACES < <(find /sys/class/net -maxdepth 1 -regex ".*/\(\(e\|en\|eth\)[a-z0-9]*\)$" -exec basename {} \;)
 
 if [ ${#ETH_INTERFACES[@]} -lt 2 ]; then
     echo "Erreur : Au moins deux interfaces réseau Ethernet sont requises."
@@ -202,10 +183,10 @@ for i in "${!ETH_INTERFACES[@]}"; do
 done
 
 # Demander à l'utilisateur de choisir l'interface pour Suricata
-read -p "Entrez le numéro de l'interface à utiliser pour Suricata : " SURICATA_IF_INDEX
+read -r -p "Entrez le numéro de l'interface à utiliser pour Suricata : " SURICATA_IF_INDEX
 while ! [[ "$SURICATA_IF_INDEX" =~ ^[0-9]+$ ]] || [ "$SURICATA_IF_INDEX" -lt 0 ] || [ "$SURICATA_IF_INDEX" -ge ${#ETH_INTERFACES[@]} ]; do
     echo "Numéro d'interface invalide. Veuillez réessayer."
-    read -p "Entrez le numéro de l'interface à utiliser pour Suricata : " SURICATA_IF_INDEX
+    read -r -p "Entrez le numéro de l'interface à utiliser pour Suricata : " SURICATA_IF_INDEX
 done
 
 SURICATA_INTERFACE=${ETH_INTERFACES[$SURICATA_IF_INDEX]}
@@ -229,10 +210,10 @@ for i in "${!ETH_INTERFACES[@]}"; do
     echo "[$i] ${ETH_INTERFACES[$i]}"
 done
 
-read -p "Entrez le numéro de l'interface à utiliser pour les autres services : " SERVICES_IF_INDEX
+read -r -p "Entrez le numéro de l'interface à utiliser pour les autres services : " SERVICES_IF_INDEX
 while ! [[ "$SERVICES_IF_INDEX" =~ ^[0-9]+$ ]] || [ "$SERVICES_IF_INDEX" -lt 0 ] || [ "$SERVICES_IF_INDEX" -ge ${#ETH_INTERFACES[@]} ]; do
     echo "Numéro d'interface invalide. Veuillez réessayer."
-    read -p "Entrez le numéro de l'interface à utiliser pour les autres services : " SERVICES_IF_INDEX
+    read -r -p "Entrez le numéro de l'interface à utiliser pour les autres services : " SERVICES_IF_INDEX
 done
 
 SERVICES_INTERFACE=${ETH_INTERFACES[$SERVICES_IF_INDEX]}
@@ -443,12 +424,12 @@ echo "-----------------------------------------------------------"
 
 # 14. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
 
-read -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
+read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
 
 # Validation de l'entrée utilisateur
 while [[ ! "$POST_INSTALL_CHOICE" =~ ^[YyNn]$ ]]; do
     echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
-    read -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
+    read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
 done
 
 if [[ "$POST_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
@@ -464,58 +445,58 @@ fi
 echo ">>> Configuration des e-mails pour les alertes dans Wazuh..."
 
 # Demander les informations SMTP à l'utilisateur
-read -p "Entrez le serveur SMTP (exemple : smtp.votre_domaine.com) : " SMTP_SERVER
+read -r -p "Entrez le serveur SMTP (exemple : smtp.votre_domaine.com) : " SMTP_SERVER
 
 # Validation de l'adresse du serveur SMTP
 while [[ ! "$SMTP_SERVER" =~ ^[a-zA-Z0-9._%-]+\.[a-zA-Z]{2,6}$ ]]; do
     echo "Adresse du serveur SMTP invalide. Veuillez réessayer."
-    read -p "Entrez le serveur SMTP (exemple : smtp.votre_domaine.com) : " SMTP_SERVER
+    read -r -p "Entrez le serveur SMTP (exemple : smtp.votre_domaine.com) : " SMTP_SERVER
 done
 
-read -p "Entrez le port SMTP (par défaut 587) : " SMTP_PORT
+read -r -p "Entrez le port SMTP (par défaut 587) : " SMTP_PORT
 SMTP_PORT=${SMTP_PORT:-587}
 
 # Vérifier que le port est un nombre entre 1 et 65535
 while ! [[ "$SMTP_PORT" =~ ^[0-9]+$ ]] || [ "$SMTP_PORT" -lt 1 ] || [ "$SMTP_PORT" -gt 65535 ]; do
     echo "Port SMTP invalide. Veuillez entrer un nombre entre 1 et 65535."
-    read -p "Entrez le port SMTP (par défaut 587) : " SMTP_PORT
+    read -r -p "Entrez le port SMTP (par défaut 587) : " SMTP_PORT
 done
 
-read -p "Utilisez-vous une connexion sécurisée (TLS/SSL) ? (y/n) : " SMTP_SECURE
+read -r -p "Utilisez-vous une connexion sécurisée (TLS/SSL) ? (y/n) : " SMTP_SECURE
 
 # Validation de l'entrée utilisateur
 while [[ ! "$SMTP_SECURE" =~ ^[YyNn]$ ]]; do
     echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
-    read -p "Utilisez-vous une connexion sécurisée (TLS/SSL) ? (y/n) : " SMTP_SECURE
+    read -r -p "Utilisez-vous une connexion sécurisée (TLS/SSL) ? (y/n) : " SMTP_SECURE
 done
 
-read -p "Entrez l'adresse e-mail de l'expéditeur : " EMAIL_FROM
+read -r -p "Entrez l'adresse e-mail de l'expéditeur : " EMAIL_FROM
 
 # Validation de l'adresse e-mail
 while [[ ! "$EMAIL_FROM" =~ ^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$ ]]; do
     echo "Adresse e-mail invalide. Veuillez réessayer."
-    read -p "Entrez l'adresse e-mail de l'expéditeur : " EMAIL_FROM
+    read -r -p "Entrez l'adresse e-mail de l'expéditeur : " EMAIL_FROM
 done
 
-read -p "Entrez l'adresse e-mail du destinataire : " EMAIL_TO
+read -r -p "Entrez l'adresse e-mail du destinataire : " EMAIL_TO
 
 # Validation de l'adresse e-mail
 while [[ ! "$EMAIL_TO" =~ ^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$ ]]; do
     echo "Adresse e-mail invalide. Veuillez réessayer."
-    read -p "Entrez l'adresse e-mail du destinataire : " EMAIL_TO
+    read -r -p "Entrez l'adresse e-mail du destinataire : " EMAIL_TO
 done
 
-read -p "Le serveur SMTP nécessite-t-il une authentification ? (y/n) : " SMTP_AUTH
+read -r -p "Le serveur SMTP nécessite-t-il une authentification ? (y/n) : " SMTP_AUTH
 
 # Validation de l'entrée utilisateur
 while [[ ! "$SMTP_AUTH" =~ ^[YyNn]$ ]]; do
     echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
-    read -p "Le serveur SMTP nécessite-t-il une authentification ? (y/n) : " SMTP_AUTH
+    read -r -p "Le serveur SMTP nécessite-t-il une authentification ? (y/n) : " SMTP_AUTH
 done
 
 if [[ "$SMTP_AUTH" =~ ^[Yy]$ ]]; then
-    read -p "Entrez le nom d'utilisateur SMTP : " SMTP_USER
-    read -s -p "Entrez le mot de passe SMTP : " SMTP_PASS
+    read -r -p "Entrez le nom d'utilisateur SMTP : " SMTP_USER
+    read -r -s -p "Entrez le mot de passe SMTP : " SMTP_PASS
     echo
 fi
 
@@ -590,19 +571,19 @@ echo "Ou reconfigurer Wazuh pour l'envoi de mails via le dashboard."
 echo ">>> Création de workflows de réponse dans Shuffle..."
 
 # Demander les informations pour l'API Wazuh
-read -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000) : " WAZUH_API_URL
+read -r -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000) : " WAZUH_API_URL
 WAZUH_API_URL=${WAZUH_API_URL:-"https://wazuh.manager:55000"}
 
 # Validation de l'URL
 while [[ ! "$WAZUH_API_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; do
     echo "URL invalide. Veuillez réessayer."
-    read -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000) : " WAZUH_API_URL
+    read -r -p "Entrez l'URL de l'API Wazuh (par défaut : https://wazuh.manager:55000) : " WAZUH_API_URL
 done
 
 # Demander le nom d'utilisateur et le mot de passe de l'API Wazuh
-read -p "Entrez le nom d'utilisateur de l'API Wazuh (par défaut: wazuh-wui) : " WAZUH_API_USER
+read -r -p "Entrez le nom d'utilisateur de l'API Wazuh (par défaut: wazuh-wui) : " WAZUH_API_USER
 WAZUH_API_USER=${WAZUH_API_USER:-"wazuh-wui"}
-read -s -p "Entrez le mot de passe de l'API Wazuh (par défaut: MyS3cr37P450r.*-) : " WAZUH_API_PASS
+read -r -s -p "Entrez le mot de passe de l'API Wazuh (par défaut: MyS3cr37P450r.*-) : " WAZUH_API_PASS
 WAZUH_API_PASS=${WAZUH_API_PASS:-"MyS3cr37P450r.*-"}
 echo
 
@@ -665,16 +646,16 @@ fi
 # Intégration avec Mikrotik
 echo ">>> Configuration de l'application Mikrotik dans Shuffle..."
 
-read -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
+read -r -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
 
 # Validation de l'adresse IP
 while ! [[ "$MIKROTIK_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; do
     echo "Adresse IP invalide. Veuillez réessayer."
-    read -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
+    read -r -p "Entrez l'adresse IP du routeur Mikrotik : " MIKROTIK_IP
 done
 
-read -p "Entrez le nom d'utilisateur du routeur Mikrotik : " MIKROTIK_USER
-read -s -p "Entrez le mot de passe du routeur Mikrotik : " MIKROTIK_PASS
+read -r -p "Entrez le nom d'utilisateur du routeur Mikrotik : " MIKROTIK_USER
+read -r -s -p "Entrez le mot de passe du routeur Mikrotik : " MIKROTIK_PASS
 echo
 
 MIKROTIK_APP_CONFIG=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/apps" \
@@ -714,10 +695,10 @@ validate_email() {
 }
 
 # Demander l'adresse e-mail pour l'envoi des rapports
-read -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
+read -r -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
 while ! validate_email "$INCIDENT_EMAIL"; do
     echo "Adresse e-mail invalide. Veuillez réessayer."
-    read -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
+    read -r -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
 done
 
 # Importer les workflows prédéfinis
