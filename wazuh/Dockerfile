@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install openssl curl -y
 
 WORKDIR /
 
-COPY config/entrypoint.sh /
+COPY config_generator/entrypoint.sh /
 
 RUN chmod 700 /entrypoint.sh
 

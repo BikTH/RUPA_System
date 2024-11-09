@@ -101,7 +101,7 @@ done
 echo ">>> Construction des images Docker personnalisées..."
 
 # Vérifier si le Dockerfile pour suricata-wazuh existe
-if [ -f "./build_suricata-wazuh/Dockerfile" ]; then
+if [ -f "./build_suricata-wazuh/dockerfile" ]; then
     docker build -t rupa/suricata-wazuh ./build_suricata-wazuh/
 else
     echo "Dockerfile pour suricata-wazuh introuvable. Skipping build."
@@ -202,7 +202,16 @@ GLOBAL_VARS["WAZUH_SURICATA_SUBNET"]=$SURICATA_SUBNET
 GLOBAL_VARS["WAZUH_SURICATA_GATEWAY"]=$SURICATA_GATEWAY
 
 # Retirer l'interface sélectionnée de la liste
-ETH_INTERFACES=(${ETH_INTERFACES[@]:0:$SURICATA_IF_INDEX} ${ETH_INTERFACES[@]:$(($SURICATA_IF_INDEX + 1))})
+temp_array=()
+for i in "${!ETH_INTERFACES[@]}"; do
+    # Ajouter tous les éléments sauf celui à l'index $SURICATA_IF_INDEX
+    if [[ $i -ne $SURICATA_IF_INDEX ]]; then
+        temp_array+=("${ETH_INTERFACES[i]}")
+    fi
+done
+
+# Réassigner le tableau sans découpage
+ETH_INTERFACES=("${temp_array[@]}")
 
 # Demander à l'utilisateur de choisir l'interface pour les autres services
 echo "Interfaces réseau restantes pour les autres services :"
@@ -701,19 +710,16 @@ while ! validate_email "$INCIDENT_EMAIL"; do
     read -r -p "Entrez l'adresse e-mail pour recevoir les rapports d'incident : " INCIDENT_EMAIL
 done
 
-# Importer les workflows prédéfinis
-
-echo ">>> Importation des workflows prédéfinis dans Shuffle..."
-
 # Préparer les workflows JSON
-WORKFLOW_TERMINAL='{
+WORKFLOW_TERMINAL=$(cat <<EOF
+{
     "name": "Réponse aux incidents sur les terminaux",
     "description": "Workflow de réponse aux incidents sur les terminaux via Wazuh et Mikrotik.",
     "workflow": {
         "nodes": [
             {
                 "id": "1",
-                "app_id": "'"$WAZUH_APP_ID"'",
+                "app_id": "$WAZUH_APP_ID",
                 "action": "get_alerts",
                 "name": "Get Alerts from Wazuh",
                 "parameters": {
@@ -722,7 +728,7 @@ WORKFLOW_TERMINAL='{
             },
             {
                 "id": "2",
-                "app_id": "'"$MIKROTIK_APP_ID"'",
+                "app_id": "$MIKROTIK_APP_ID",
                 "action": "block_ip",
                 "name": "Block Victim Terminal",
                 "parameters": {
@@ -735,7 +741,7 @@ WORKFLOW_TERMINAL='{
                 "action": "send_email",
                 "name": "Send Incident Report",
                 "parameters": {
-                    "to": "'"$INCIDENT_EMAIL"'",
+                    "to": "$INCIDENT_EMAIL",
                     "subject": "Incident Report - Terminal",
                     "body": "Incident detected and actions taken."
                 }
@@ -746,16 +752,19 @@ WORKFLOW_TERMINAL='{
             {"source": "2", "target": "3"}
         ]
     }
-}'
+}
+EOF
+)
 
-WORKFLOW_RESEAU='{
+WORKFLOW_RESEAU=$(cat <<EOF
+{
     "name": "Réponse aux incidents réseau",
     "description": "Workflow de réponse aux incidents réseau via Suricata, Wazuh et Mikrotik.",
     "workflow": {
         "nodes": [
             {
                 "id": "1",
-                "app_id": "'"$WAZUH_APP_ID"'",
+                "app_id": "$WAZUH_APP_ID",
                 "action": "get_alerts",
                 "name": "Get Alerts from Wazuh (Suricata)",
                 "parameters": {
@@ -765,7 +774,7 @@ WORKFLOW_RESEAU='{
             },
             {
                 "id": "2",
-                "app_id": "'"$MIKROTIK_APP_ID"'",
+                "app_id": "$MIKROTIK_APP_ID",
                 "action": "block_ip",
                 "name": "Block Malicious IP",
                 "parameters": {
@@ -778,7 +787,7 @@ WORKFLOW_RESEAU='{
                 "action": "send_email",
                 "name": "Send Incident Report",
                 "parameters": {
-                    "to": "'"$INCIDENT_EMAIL"'",
+                    "to": "$INCIDENT_EMAIL",
                     "subject": "Incident Report - Network",
                     "body": "Network incident detected and actions taken."
                 }
@@ -789,16 +798,19 @@ WORKFLOW_RESEAU='{
             {"source": "2", "target": "3"}
         ]
     }
-}'
+}
+EOF
+)
 
-WORKFLOW_INCIDENT_REPORT='{
-    "name": "Rapport d\'Incident de Sécurité",
-    "description": "Workflow pour récupérer les alertes récentes de Wazuh, filtrer les alertes pertinentes, générer un rapport et l\'envoyer par email.",
+WORKFLOW_INCIDENT_REPORT=$(cat <<EOF
+{
+    "name": "Rapport d'Incident de Sécurité",
+    "description": "Workflow pour récupérer les alertes récentes de Wazuh, filtrer les alertes pertinentes, générer un rapport et l'envoyer par email.",
     "workflow": {
         "nodes": [
             {
                 "id": "1",
-                "app_id": "'"$WAZUH_APP_ID"'",
+                "app_id": "$WAZUH_APP_ID",
                 "action": "get_alerts",
                 "name": "Obtenir les alertes de Wazuh",
                 "parameters": {
@@ -821,7 +833,7 @@ WORKFLOW_INCIDENT_REPORT='{
                 "action": "code",
                 "name": "Générer le rapport",
                 "parameters": {
-                    "code": "def handler(inputs, data):\n    alerts = inputs['relevant_alerts']\n    report = 'Rapport d\'Incident de Sécurité\\n\\n'\n    for alert in alerts:\n        report += f\"ID d\'alerte: {alert['id']}\\nID de règle: {alert['rule']['id']}\\nDescription: {alert['rule']['description']}\\nAgent: {alert['agent']['name']}\\nHorodatage: {alert['timestamp']}\\n\\n\"\n    return {'report': report}"
+                    "code": "def handler(inputs, data):\n    alerts = inputs['relevant_alerts']\n    report = 'Rapport d'Incident de Sécurité\\n\\n'\n    for alert in alerts:\n        report += f\"ID d'alerte: {alert['id']}\\nID de règle: {alert['rule']['id']}\\nDescription: {alert['rule']['description']}\\nAgent: {alert['agent']['name']}\\nHorodatage: {alert['timestamp']}\\n\\n\"\n    return {'report': report}"
                 }
             },
             {
@@ -830,8 +842,8 @@ WORKFLOW_INCIDENT_REPORT='{
                 "action": "send_email",
                 "name": "Envoyer le rapport par email",
                 "parameters": {
-                    "to": "'"$INCIDENT_EMAIL"'",
-                    "subject": "Rapport d\'Incident de Sécurité",
+                    "to": "$INCIDENT_EMAIL",
+                    "subject": "Rapport d'Incident de Sécurité",
                     "body": "{{node.3.report}}"
                 }
             }
@@ -842,7 +854,10 @@ WORKFLOW_INCIDENT_REPORT='{
             {"source": "3", "target": "4"}
         ]
     }
-}'
+}
+EOF
+)
+
 
 # Importer le workflow pour les incidents sur les terminaux
 TERMINAL_WORKFLOW_RESPONSE=$(curl -s -X POST "$SHUFFLE_BACKEND_URL/api/v1/workflows" \
