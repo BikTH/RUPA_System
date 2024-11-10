@@ -408,7 +408,7 @@ echo ">>> Lancement de la plateforme Docker..."
 docker-compose up -d
 
 echo ">>> Attente du démarrage des conteneurs..."
-sleep 360 # Attendre 6 minutes
+sleep 300 # Attendre 5 minutes
 
 # 13. Vérification que tous les conteneurs fonctionnent correctement
 
