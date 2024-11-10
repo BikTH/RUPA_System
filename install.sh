@@ -6,7 +6,7 @@ clear
 echo "''*************************************************''"
 echo "''                                                 ''"
 echo "''   RESPONSE UNIFIED PREVENTION & ANALYSIS SYSTEM ''"
-echo "''                V1.1.6                           ''"
+echo "''                V1.2.0                           ''"
 echo "''                                                 ''"
 echo "''*************************************************''"
 
