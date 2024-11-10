@@ -13,4 +13,4 @@ sed -i "s/\${WAZUH_MANAGER_IP}/${WAZUH_MANAGER_IP}/g" /var/ossec/etc/ossec.conf
 
 # Démarrer Suricata
 # exec /usr/bin/suricata -c /etc/suricata/suricata.yaml -s /etc/suricata/rules/signatures.rules -i ${INT_TO_LISTEN}
-exec /usr/bin/suricata -c /etc/suricata/suricata.yaml -i ${INT_TO_LISTEN}
+exec /usr/bin/suricata -c /etc/suricata/suricata.yaml -i "${INT_TO_LISTEN}"

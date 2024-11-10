@@ -114,6 +114,8 @@ IMAGES=(
     "ghcr.io/shuffle/shuffle-orborus:latest"
     "opensearchproject/opensearch:2.14.0"
     "jasonish/evebox:latest"
+    "rupadante/suricata-wazuh:latest"
+    "rupadante/wazuh-certs-generator:0.0.2"
 )
 
 for IMAGE in "${IMAGES[@]}"; do
@@ -123,23 +125,6 @@ for IMAGE in "${IMAGES[@]}"; do
         echo "Image \"$IMAGE\" déjà présente localement."
     fi
 done
-
-# 7. Construire les images personnalisées
-echo ">>> Construction des images Docker personnalisées..."
-
-# Vérifier si le Dockerfile pour suricata-wazuh existe
-if [ -f "./build_suricata-wazuh/dockerfile" ]; then
-    docker build -t rupa/suricata-wazuh ./build_suricata-wazuh/
-else
-    echo "Dockerfile pour suricata-wazuh introuvable. Skipping build."
-fi
-
-# Vérifier si le Dockerfile pour wazuh/wazuh-certs-generator:0.0.1 existe
-if [ -f "./wazuh/Dockerfile" ]; then
-    docker build -t wazuh/wazuh-certs-generator:0.0.1 ./wazuh
-else
-    echo "Dockerfile pour wazuh/wazuh-certs-generator:0.0.1 introuvable. Skipping build."
-fi
 
 echo "-----------------------------------------------------------"
 echo "   PRÉREQUIS INSTALLÉS ET IMAGES DOCKER PRÊTES             "
@@ -473,6 +458,69 @@ if [[ "$POST_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
 else
     echo ">>> Configuration post-installation ignorée."
     echo "Installation terminée."
+
+    # 20. Affichage des identifiants par défaut et du message de fin
+
+echo "-----------------------------------------------------------"
+echo "        INSTALLATION TERMINÉE AVEC SUCCÈS                  "
+echo "-----------------------------------------------------------"
+
+# Affichage de l'ASCII art de remerciement
+
+cat <<\EOF                   
+ __                                                         
+/\ \                             __                         
+\ \ \         __     __   __  __/\_\  _____      __         
+ \ \ \  __  /'__`\ /'__`\/\ \/\ \/\ \/\ '__`\  /'__`\       
+  \ \ \L\ \/\  __//\ \L\ \ \ \_\ \ \ \ \ \L\ \/\  __/       
+   \ \____/\ \____\ \___, \ \____/\ \_\ \ ,__/\ \____\      
+    \/___/  \/____/\/___/\ \/___/  \/_/\ \ \/  \/____/      
+                        \ \_\           \ \_\               
+                         \/_/            \/_/               
+  __          ____    __  __  ____    ______        __      
+ _\ \ _      /\  _`\ /\ \/\ \/\  _`\ /\  _  \      _\ \ _   
+/\_` ' \     \ \ \L\ \ \ \ \ \ \ \L\ \ \ \L\ \    /\_` ' \  
+\/_>   <_     \ \ ,  /\ \ \ \ \ \ ,__/\ \  __ \   \/_>   <_ 
+  /\_, ,_\     \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \    /\_, ,_\
+  \/_/\_\/      \ \_\ \_\ \_____\ \_\   \ \_\ \_\   \/_/\_\/
+     \/_/        \/_/\/ /\/_____/\/_/    \/_/\/_/      \/_/                                     
+ ____                     __                                
+/\  _`\                  /\ \__                             
+\ \,\L\_\  __  __    ____\ \ ,_\    __    ___ ___           
+ \/_\__ \ /\ \/\ \  /',__\\ \ \/  /'__`\/' __` __`\         
+   /\ \L\ \ \ \_\ \/\__, `\\ \ \_/\  __//\ \/\ \/\ \        
+   \ `\____\/`____ \/\____/ \ \__\ \____\ \_\ \_\ \_\       
+    \/_____/`/___/> \/___/   \/__/\/____/\/_/\/_/\/_/       
+               /\___/                                       
+               \/__/                                        
+ __  __                                                     
+/\ \/\ \                                                    
+\ \ \ \ \    ___   __  __    ____                           
+ \ \ \ \ \  / __`\/\ \/\ \  /',__\                          
+  \ \ \_/ \/\ \L\ \ \ \_\ \/\__, `\                         
+   \ `\___/\ \____/\ \____/\/\____/                         
+    `\/__/  \/___/  \/___/  \/___/                                                                                
+                                             __             
+ _ __    __    ___ ___      __   _ __   ___ /\_\     __     
+/\`'__\/'__`\/' __` __`\  /'__`\/\`'__\/'___\/\ \  /'__`\   
+\ \ \//\  __//\ \/\ \/\ \/\  __/\ \ \//\ \__/\ \ \/\  __/   
+ \ \_\\ \____\ \_\ \_\ \_\ \____\\ \_\\ \____\\ \_\ \____\  
+  \/_/ \/____/\/_/\/_/\/_/\/____/ \/_/ \/____/ \/_/\/____/ 
+--------------------------------------------------------------
+EOF
+
+echo "Accédez à la plateforme via : https://${SERVICES_IP}"
+
+echo "Identifiants WAZUH par défaut :"
+echo "Nom d'utilisateur : admin"
+echo "Mot de passe : SecretPassword"
+
+echo "Identifiants SHUFFLE par défaut :"
+echo "Nom d'utilisateur : $SHUFFLE_DEFAULT_USERNAME"
+echo "Mot de passe : $SHUFFLE_DEFAULT_PASSWORD"
+
+echo "Merci d'avoir installé RUPA System !"
+
     exit 0
 fi
 

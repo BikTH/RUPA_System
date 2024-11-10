@@ -109,7 +109,7 @@ services:
       - rupa-net
 
   wazuh.suricata:
-    image: rupa/suricata-wazuh:latest
+    image: rupadante/suricata-wazuh:latest
     container_name: wazuh.suricata
     restart: always
     hostname: wazuh.suricata
