@@ -32,3 +32,6 @@ wazuh/config/wazuh_indexer_ssl_certs/*.key
 #shuffle
 shuffle-database/
 
+#Rupa_quick-view
+Rupa_quick-view/
+

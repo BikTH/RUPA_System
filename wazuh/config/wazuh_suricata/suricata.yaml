@@ -15,7 +15,7 @@ suricata-version: "6.0"
 vars:
   # more specific is better for alert accuracy and performance
   address-groups:
-    HOME_NET: "[${SURICATA_IP}]" # DEFAULT BY RUPA  "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    HOME_NET: "[192.168.0.0/16]" # DEFAULT BY RUPA  "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]" ${SURICATA_IP}
     #HOME_NET: "[192.168.0.0/16]"
     #HOME_NET: "[10.0.0.0/8]"
     #HOME_NET: "[172.16.0.0/12]"
@@ -326,7 +326,7 @@ outputs:
 
   # a line based log of HTTP requests (no alerts)
   - http-log:
-      enabled: no
+      enabled: yes
       filename: http.log
       append: yes
       #extended: yes     # enable this for extended logging information
@@ -618,7 +618,7 @@ logging:
 
 # Linux high speed capture support
 af-packet:
-  - interface: eth0
+  - interface: eth0 #${SURICATA_INT}
     # Number of receive threads. "auto" uses the number of cores
     #threads: auto
     # Default clusterid. AF_PACKET will load balance packets based on flow.
