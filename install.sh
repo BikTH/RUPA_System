@@ -48,12 +48,22 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # 2. Mise à jour du système
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 echo ">>> Mise à jour du système..."
 apt update -y && apt upgrade -y
 sudo apt install -y --fix-missing
 apt update -y && apt upgrade -y
 
 # 3. Appliquer la configuration sysctl
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 echo ">>> Configuration du paramètre vm.max_map_count..."
 sysctl -w vm.max_map_count=262144
 sysctl -p
@@ -65,10 +75,20 @@ if ! grep -q "vm.max_map_count=262144" /etc/sysctl.conf; then
 fi
 
 # 4. Installation des prérequis
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 echo ">>> Installation des prérequis..."
 apt install -y gnome-terminal ca-certificates curl gnupg lsb-release openssl
 
 # 5. Installation de Docker
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 echo ">>> Installation de Docker..."
 
 # Vérifier si Docker est déjà installé
@@ -105,6 +125,11 @@ else
 fi
 
 # 6. Télécharger les images Docker nécessaires
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 echo ">>> Téléchargement des images Docker requises..."
 
 IMAGES=(
@@ -134,7 +159,11 @@ echo "   PRÉREQUIS INSTALLÉS ET IMAGES DOCKER PRÊTES             "
 echo "-----------------------------------------------------------"
 
 # 8. Création des variables globales et des dossiers nécessaires
-
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 # Déclarer un tableau pour stocker les variables globales
 declare -A GLOBAL_VARS
 
@@ -181,6 +210,11 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -subj "/C=CM/ST=CENTRE/L=YAOUNDE/O=${ORG_NAME}/OU=${ORG_UNIT}/CN=localhost/emailAddress=${EMAIL_ADDRESS}"
 
 # 9. Gestion des interfaces réseau
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 
 echo ">>> Détection des interfaces réseau disponibles..."
 
@@ -304,6 +338,12 @@ GLOBAL_VARS["SHUFFLE_DEFAULT_PASSWORD"]=$SHUFFLE_DEFAULT_PASSWORD
 
 
 # 10. Création du fichier .env local
+
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
 
 echo ">>> Création du fichier .env à la racine du projet..."
 
@@ -442,6 +482,12 @@ echo "Fichier .env créé avec succès."
 
 # 11. Mise à jour du fichier suricata.yaml
 
+cat <<\EOF
+- - - RU - - -
+- - - PA - - -
+- - System - -
+EOF
+
 echo ">>> Mise à jour du fichier suricata.yaml avec l'adresse IP de Suricata..."
 
 SURICATA_YAML_PATH="wazuh/config/wazuh_suricata/suricata.yaml"
@@ -469,6 +515,18 @@ sleep 300 # Attendre 5 minutes
 
 echo ">>> Vérification de l'état des conteneurs Docker..."
 
+# Initialiser des variables pour stocker les noms des conteneurs
+WAZUH_MANAGER_CONTAINER=""
+WAZUH_INDEXER_CONTAINER=""
+WAZUH_DASHBOARD_CONTAINER=""
+WAZUH_SURICATA_CONTAINER=""
+EVEBOX_CONTAINER=""
+NGINX_CONTAINER=""
+SHUFFLE_FRONTEND_CONTAINER=""
+SHUFFLE_BACKEND_CONTAINER=""
+SHUFFLE_ORBORUS_CONTAINER=""
+SHUFFLE_OPENSEARCH_CONTAINER=""
+
 # Récupérer la liste des conteneurs définis dans docker-compose
 CONTAINERS=$(docker-compose ps -q)
 
@@ -484,6 +542,29 @@ for CONTAINER_ID in $CONTAINERS; do
     else
         echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
     fi
+
+    # Identifier les conteneurs en fonction de leur nom
+    if [[ "$CONTAINER_NAME" == *"wazuh.manager"* ]]; then
+        WAZUH_MANAGER_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"wazuh.indexer"* ]]; then
+        WAZUH_INDEXER_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"wazuh.dashboard"* ]]; then
+        WAZUH_DASHBOARD_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"wazuh.suricata"* ]]; then
+        WAZUH_SURICATA_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"evebox"* ]]; then
+        EVEBOX_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"nginx"* ]]; then
+        NGINX_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"shuffle-frontend"* ]]; then
+        SHUFFLE_FRONTEND_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"shuffle-backend"* ]]; then
+        SHUFFLE_BACKEND_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"shuffle-orborus"* ]]; then
+        SHUFFLE_ORBORUS_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"shuffle-opensearch"* ]]; then
+        SHUFFLE_OPENSEARCH_CONTAINER="$CONTAINER_NAME"
+    fi
 done
 
 if [ $ERROR_FOUND -eq 1 ]; then
@@ -492,6 +573,25 @@ if [ $ERROR_FOUND -eq 1 ]; then
     exit 1
 else
     echo "Tous les conteneurs fonctionnent correctement."
+fi
+
+# Stocker les noms des conteneurs dans le tableau GLOBAL_VARS
+GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]="$WAZUH_MANAGER_CONTAINER"
+GLOBAL_VARS["WAZUH_INDEXER_CONTAINER"]="$WAZUH_INDEXER_CONTAINER"
+GLOBAL_VARS["WAZUH_DASHBOARD_CONTAINER"]="$WAZUH_DASHBOARD_CONTAINER"
+GLOBAL_VARS["WAZUH_SURICATA_CONTAINER"]="$WAZUH_SURICATA_CONTAINER"
+GLOBAL_VARS["EVEBOX_CONTAINER"]="$EVEBOX_CONTAINER"
+GLOBAL_VARS["NGINX_CONTAINER"]="$NGINX_CONTAINER"
+GLOBAL_VARS["SHUFFLE_FRONTEND_CONTAINER"]="$SHUFFLE_FRONTEND_CONTAINER"
+GLOBAL_VARS["SHUFFLE_BACKEND_CONTAINER"]="$SHUFFLE_BACKEND_CONTAINER"
+GLOBAL_VARS["SHUFFLE_ORBORUS_CONTAINER"]="$SHUFFLE_ORBORUS_CONTAINER"
+GLOBAL_VARS["SHUFFLE_OPENSEARCH_CONTAINER"]="$SHUFFLE_OPENSEARCH_CONTAINER"
+
+# Vérifier que tous les conteneurs requis ont été trouvés
+# Vérifier que le conteneur wazuh-manager a été trouvé
+if [ -z "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" ]; then
+    echo "Erreur : Le conteneur Wazuh Manager n'a pas été trouvé."
+    exit 1
 fi
 
 
@@ -504,16 +604,16 @@ echo "-----------------------------------------------------------"
 # a. Créer un groupe d'agents appelé Suricata
 echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
 
-docker exec -it wazuh.manager /var/ossec/bin/agent_groups -a -g Suricata -q
+docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g Suricata -q
 
 # b. Récupérer l'ID de l'agent Suricata
 echo ">>> Récupération de l'ID de l'agent Suricata..."
 
-AGENT_INFO=$(docker exec -it wazuh.manager /var/ossec/bin/manage_agents -l | grep 'suricata')
+AGENT_INFO=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_agents -l | grep 'suricata')
 
 if [ -z "$AGENT_INFO" ]; then
     echo "Erreur : L'agent Suricata n'a pas été trouvé. Veuillez vous assurer que l'agent est enregistré."
-    #exit 1
+    # Vous pouvez ajouter une logique ici pour gérer ce cas
 fi
 
 AGENT_ID=$(echo "$AGENT_INFO" | awk '{print $1}')
@@ -523,7 +623,7 @@ echo "ID de l'agent Suricata : $AGENT_ID"
 # c. Ajouter l'agent Suricata au groupe 'Suricata'
 echo ">>> Ajout de l'agent Suricata au groupe 'Suricata'..."
 
-docker exec -it wazuh.manager /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
+docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
 
 # d. Ajouter la configuration partagée pour le groupe Suricata
 echo ">>> Configuration du fichier agent.conf pour le groupe 'Suricata'..."
@@ -539,7 +639,7 @@ AGENT_CONF_CONTENT='<agent_config>
 echo "$AGENT_CONF_CONTENT" > agent.conf
 
 # Copier le fichier dans le conteneur
-docker cp agent.conf wazuh.manager:/var/ossec/etc/shared/Suricata/agent.conf
+docker cp agent.conf "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/Suricata/agent.conf
 
 # Supprimer le fichier local
 rm agent.conf
@@ -564,7 +664,7 @@ LOCAL_DECODER_CONTENT='<decoder name="json">
 echo "$LOCAL_DECODER_CONTENT" > local_decoder.xml
 
 # Copier le fichier dans le conteneur
-docker cp local_decoder.xml wazuh.manager:/var/ossec/etc/decoders/local_decoder.xml
+docker cp local_decoder.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/decoders/local_decoder.xml
 
 # Supprimer le fichier local
 rm local_decoder.xml
@@ -597,7 +697,7 @@ LOCAL_RULES_CONTENT='<group name="custom_active_response_rules,">
 echo "$LOCAL_RULES_CONTENT" > local_rules.xml
 
 # Copier le fichier dans le conteneur
-docker cp local_rules.xml wazuh.manager:/var/ossec/etc/rules/local_rules.xml
+docker cp local_rules.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/rules/local_rules.xml
 
 # Supprimer le fichier local
 rm local_rules.xml
@@ -606,7 +706,7 @@ rm local_rules.xml
 echo ">>> Configuration de l'active response dans Wazuh..."
 
 # Vérifier si la section 'command' pour 'firewall-drop' existe déjà
-FIREWALL_DROP_EXIST=$(docker exec -it wazuh.manager grep -c "<name>firewall-drop</name>" /var/ossec/etc/ossec.conf || true)
+FIREWALL_DROP_EXIST=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" grep -c "<name>firewall-drop</name>" /var/ossec/etc/ossec.conf || true)
 
 if [ "$FIREWALL_DROP_EXIST" -eq 0 ]; then
     echo ">>> Ajout de la commande 'firewall-drop' dans ossec.conf..."
@@ -618,7 +718,7 @@ if [ "$FIREWALL_DROP_EXIST" -eq 0 ]; then
   </command>'
 
     # Ajouter le bloc 'command' dans ossec.conf
-    docker exec -it wazuh.manager sed -i "/<\/commands>/i \  $COMMAND_BLOCK" /var/ossec/etc/ossec.conf
+    docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/commands>/i \  $COMMAND_BLOCK" /var/ossec/etc/ossec.conf
 fi
 
 # Ajouter la configuration de l'active response
@@ -630,22 +730,20 @@ ACTIVE_RESPONSE_BLOCK='<active-response>
   </active-response>'
 
 # Ajouter le bloc 'active-response' dans ossec.conf
-docker exec -it wazuh.manager sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
+docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
 
 # h. Redémarrer le service Wazuh Manager
 echo ">>> Redémarrage du service Wazuh Manager..."
 
-docker-compose restart wazuh.manager
-sleep 120 #Attendre 2min le temps qu'il redémarre !
+docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}"
+sleep 120 # Attendre 2 minutes le temps qu'il redémarre !
 
 echo ">>> Wazuh Manager est de nouveau démarré..."
 
+# Vérifier à nouveau l'état des conteneurs
 echo ">>> Vérification de l'état des conteneurs Docker..."
 
-# Récupérer la liste des conteneurs définis dans docker-compose
-CONTAINERS=$(docker-compose ps -q)
-
-# Initialiser un indicateur d'erreur
+# Réinitialiser l'indicateur d'erreur
 ERROR_FOUND=0
 
 for CONTAINER_ID in $CONTAINERS; do
@@ -747,15 +845,18 @@ EOF
 
 echo "Accédez à la plateforme via : https://${SERVICES_IP}"
 echo " "
+echo " "
 
 echo "Identifiants WAZUH par défaut :"
 echo "Nom d'utilisateur : admin"
 echo "Mot de passe : SecretPassword"
 echo " "
+echo " "
 
 echo "Identifiants SHUFFLE par défaut :"
 echo "Nom d'utilisateur : $SHUFFLE_DEFAULT_USERNAME"
 echo "Mot de passe : $SHUFFLE_DEFAULT_PASSWORD"
+echo " "
 echo " "
 
 echo "Merci d'avoir installé RUPA System <3"
