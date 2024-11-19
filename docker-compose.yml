@@ -212,8 +212,10 @@ services:
     env_file: .env
     environment:
       #- DOCKER_HOST=tcp://docker-socket-proxy:2375
-      - SHUFFLE_APP_HOTLOAD_FOLDER=/shuffle-apps
-      - SHUFFLE_FILE_LOCATION=/shuffle-files
+      - SHUFFLE_APP_HOTLOAD_FOLDER=${SHUFFLE_APP_HOTLOAD_FOLDER}
+      - SHUFFLE_FILE_LOCATION=${SHUFFLE_FILE_LOCATION}
+      - SHUFFLE_DEFAULT_USERNAME=${SHUFFLE_DEFAULT_USERNAME}
+      - SHUFFLE_DEFAULT_PASSWORD=${SHUFFLE_DEFAULT_PASSWORD}
     restart: unless-stopped
     depends_on:
       - wazuh.suricata
