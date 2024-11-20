@@ -34,6 +34,11 @@ cat <<\EOF
 
 EOF
 
+# cat <<\EOF
+# - - - RU - - -
+# - - - PA - - -
+# - - System - -
+# EOF
 
 
 echo "-----------------------------------------------------"
@@ -48,22 +53,13 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # 2. Mise à jour du système
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
 echo ">>> Mise à jour du système..."
+
 apt update -y && apt upgrade -y
 sudo apt install -y --fix-missing
 apt update -y && apt upgrade -y
 
 # 3. Appliquer la configuration sysctl
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
 echo ">>> Configuration du paramètre vm.max_map_count..."
 sysctl -w vm.max_map_count=262144
 sysctl -p
@@ -75,20 +71,12 @@ if ! grep -q "vm.max_map_count=262144" /etc/sysctl.conf; then
 fi
 
 # 4. Installation des prérequis
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 echo ">>> Installation des prérequis..."
 apt install -y gnome-terminal ca-certificates curl gnupg lsb-release openssl
 
 # 5. Installation de Docker
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 echo ">>> Installation de Docker..."
 
 # Vérifier si Docker est déjà installé
@@ -125,11 +113,7 @@ else
 fi
 
 # 6. Télécharger les images Docker nécessaires
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 echo ">>> Téléchargement des images Docker requises..."
 
 IMAGES=(
@@ -159,11 +143,7 @@ echo "   PRÉREQUIS INSTALLÉS ET IMAGES DOCKER PRÊTES             "
 echo "-----------------------------------------------------------"
 
 # 8. Création des variables globales et des dossiers nécessaires
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 # Déclarer un tableau pour stocker les variables globales
 declare -A GLOBAL_VARS
 
@@ -210,11 +190,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -subj "/C=CM/ST=CENTRE/L=YAOUNDE/O=${ORG_NAME}/OU=${ORG_UNIT}/CN=localhost/emailAddress=${EMAIL_ADDRESS}"
 
 # 9. Gestion des interfaces réseau
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 
 echo ">>> Détection des interfaces réseau disponibles..."
 
@@ -339,11 +315,7 @@ GLOBAL_VARS["SHUFFLE_DEFAULT_PASSWORD"]=$SHUFFLE_DEFAULT_PASSWORD
 
 # 10. Création du fichier .env local
 
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 
 echo ">>> Création du fichier .env à la racine du projet..."
 
@@ -482,11 +454,7 @@ echo "Fichier .env créé avec succès."
 
 # 11. Mise à jour du fichier suricata.yaml
 
-cat <<\EOF
-- - - RU - - -
-- - - PA - - -
-- - System - -
-EOF
+
 
 echo ">>> Mise à jour du fichier suricata.yaml avec l'adresse IP de Suricata..."
 
@@ -509,7 +477,7 @@ echo ">>> Lancement de la plateforme Docker..."
 docker-compose up -d
 
 echo ">>> Attente du démarrage des conteneurs..."
-sleep 300 # Attendre 5 minutes
+sleep 60 # Attendre 1 minutes
 
 # 13. Vérification que tous les conteneurs fonctionnent correctement
 
@@ -601,6 +569,9 @@ echo "-----------------------------------------------------------"
 
 # 14. Intégration de Suricata avec Wazuh
 
+echo ">>> Attente du démarrage complet des conteneurs..."
+sleep 240 # Attendre 4 minutes
+
 # a. Créer un groupe d'agents appelé Suricata
 echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
 
@@ -613,159 +584,161 @@ AGENT_INFO=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/os
 
 if [ -z "$AGENT_INFO" ]; then
     echo "Erreur : L'agent Suricata n'a pas été trouvé. Veuillez vous assurer que l'agent est enregistré."
-    # Vous pouvez ajouter une logique ici pour gérer ce cas
-fi
-
-AGENT_ID=$(echo "$AGENT_INFO" | awk '{print $1}')
-
-echo "ID de l'agent Suricata : $AGENT_ID"
-
-# c. Ajouter l'agent Suricata au groupe 'Suricata'
-echo ">>> Ajout de l'agent Suricata au groupe 'Suricata'..."
-
-docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
-
-# d. Ajouter la configuration partagée pour le groupe Suricata
-echo ">>> Configuration du fichier agent.conf pour le groupe 'Suricata'..."
-
-AGENT_CONF_CONTENT='<agent_config>
-  <localfile>
-    <log_format>json</log_format>
-    <location>/var/log/suricata/eve.json</location>
-  </localfile>
-</agent_config>'
-
-# Créer le fichier agent.conf localement
-echo "$AGENT_CONF_CONTENT" > agent.conf
-
-# Copier le fichier dans le conteneur
-docker cp agent.conf "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/Suricata/agent.conf
-
-# Supprimer le fichier local
-rm agent.conf
-
-# e. Ajouter les décoders personnalisés pour Suricata
-echo ">>> Ajout des décoders personnalisés pour Suricata..."
-
-LOCAL_DECODER_CONTENT='<decoder name="json">
-  <prematch>^{\s*"</prematch>
-</decoder>
-<decoder name="json_child">
-  <parent>json</parent>
-  <regex type="pcre2">"src_ip":"([^"]+)"</regex>
-  <order>srcip</order>
-</decoder>
-<decoder name="json_child">
-  <parent>json</parent>
-  <plugin_decoder>JSON_Decoder</plugin_decoder>
-</decoder>'
-
-# Créer le fichier local_decoder.xml localement
-echo "$LOCAL_DECODER_CONTENT" > local_decoder.xml
-
-# Copier le fichier dans le conteneur
-docker cp local_decoder.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/decoders/local_decoder.xml
-
-# Supprimer le fichier local
-rm local_decoder.xml
-
-# f. Ajouter les règles personnalisées pour Suricata
-echo ">>> Ajout des règles personnalisées pour Suricata..."
-
-LOCAL_RULES_CONTENT='<group name="custom_active_response_rules,">
-  <rule id="100200" level="12">
-    <if_sid>86600</if_sid>
-    <field name="event_type">^alert$</field>
-    <match>ET DOS Inbound GoldenEye DoS attack</match>
-    <description>GoldenEye DoS attack has been detected. </description>
-    <mitre>
-      <id>T1498</id>
-    </mitre>
-  </rule>
-  <rule id="100201" level="12">
-    <if_sid>86600</if_sid>
-    <field name="event_type">^alert$</field>
-    <match>ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine)</match>
-    <description>Nmap scripting engine detected. </description>
-    <mitre>
-      <id>T1595</id>
-    </mitre>
-  </rule>
-</group>'
-
-# Créer le fichier local_rules.xml localement
-echo "$LOCAL_RULES_CONTENT" > local_rules.xml
-
-# Copier le fichier dans le conteneur
-docker cp local_rules.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/rules/local_rules.xml
-
-# Supprimer le fichier local
-rm local_rules.xml
-
-# g. Configuration de l'active response
-echo ">>> Configuration de l'active response dans Wazuh..."
-
-# Vérifier si la section 'command' pour 'firewall-drop' existe déjà
-FIREWALL_DROP_EXIST=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" grep -c "<name>firewall-drop</name>" /var/ossec/etc/ossec.conf || true)
-
-if [ "$FIREWALL_DROP_EXIST" -eq 0 ]; then
-    echo ">>> Ajout de la commande 'firewall-drop' dans ossec.conf..."
-
-    COMMAND_BLOCK='<command>
-    <name>firewall-drop</name>
-    <executable>firewall-drop</executable>
-    <timeout_allowed>yes</timeout_allowed>
-  </command>'
-
-    # Ajouter le bloc 'command' dans ossec.conf
-    docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/commands>/i \  $COMMAND_BLOCK" /var/ossec/etc/ossec.conf
-fi
-
-# Ajouter la configuration de l'active response
-ACTIVE_RESPONSE_BLOCK='<active-response>
-    <command>firewall-drop</command>
-    <location>local</location>
-    <rules_id>100200,100201</rules_id>
-    <timeout>180</timeout>
-  </active-response>'
-
-# Ajouter le bloc 'active-response' dans ossec.conf
-docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
-
-# h. Redémarrer le service Wazuh Manager
-echo ">>> Redémarrage du service Wazuh Manager..."
-
-docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}"
-sleep 120 # Attendre 2 minutes le temps qu'il redémarre !
-
-echo ">>> Wazuh Manager est de nouveau démarré..."
-
-# Vérifier à nouveau l'état des conteneurs
-echo ">>> Vérification de l'état des conteneurs Docker..."
-
-# Réinitialiser l'indicateur d'erreur
-ERROR_FOUND=0
-
-for CONTAINER_ID in $CONTAINERS; do
-    CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
-    CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
-    if [ "$CONTAINER_STATUS" != "running" ]; then
-        echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
-        ERROR_FOUND=1
-    else
-        echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
-    fi
-done
-
-if [ $ERROR_FOUND -eq 1 ]; then
-    echo "Erreur : Un ou plusieurs conteneurs ne fonctionnent pas correctement."
-    echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
-    exit 1
 else
-    echo "Tous les conteneurs fonctionnent correctement."
-fi
 
+    AGENT_ID=$(echo "$AGENT_INFO" | awk '{print $1}')
+
+    echo "ID de l'agent Suricata : $AGENT_ID"
+
+    # c. Ajouter l'agent Suricata au groupe 'Suricata'
+    echo ">>> Ajout de l'agent Suricata au groupe 'Suricata'..."
+
+    docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
+
+    # d. Ajouter la configuration partagée pour le groupe Suricata
+    echo ">>> Configuration du fichier agent.conf pour le groupe 'Suricata'..."
+
+    AGENT_CONF_CONTENT='<agent_config>
+    <localfile>
+        <log_format>json</log_format>
+        <location>/var/log/suricata/eve.json</location>
+    </localfile>
+    </agent_config>'
+
+    # Créer le fichier agent.conf localement
+    echo "$AGENT_CONF_CONTENT" > agent.conf
+
+    # Copier le fichier dans le conteneur
+    docker cp agent.conf "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/Suricata/agent.conf
+
+    # Supprimer le fichier local
+    rm agent.conf
+
+    # e. Ajouter les décoders personnalisés pour Suricata
+    echo ">>> Ajout des décoders personnalisés pour Suricata..."
+
+    LOCAL_DECODER_CONTENT='<decoder name="json">
+    <prematch>^{\s*"</prematch>
+    </decoder>
+    <decoder name="json_child">
+    <parent>json</parent>
+    <regex type="pcre2">"src_ip":"([^"]+)"</regex>
+    <order>srcip</order>
+    </decoder>
+    <decoder name="json_child">
+    <parent>json</parent>
+    <plugin_decoder>JSON_Decoder</plugin_decoder>
+    </decoder>'
+
+    # Créer le fichier local_decoder.xml localement
+    echo "$LOCAL_DECODER_CONTENT" > local_decoder.xml
+
+    # Copier le fichier dans le conteneur
+    docker cp local_decoder.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/decoders/local_decoder.xml
+
+    # Supprimer le fichier local
+    rm local_decoder.xml
+
+    # f. Ajouter les règles personnalisées pour Suricata
+    echo ">>> Ajout des règles personnalisées pour Suricata..."
+
+    LOCAL_RULES_CONTENT='<group name="custom_active_response_rules,">
+    <rule id="100200" level="12">
+        <if_sid>86600</if_sid>
+        <field name="event_type">^alert$</field>
+        <match>ET DOS Inbound GoldenEye DoS attack</match>
+        <description>GoldenEye DoS attack has been detected. </description>
+        <mitre>
+        <id>T1498</id>
+        </mitre>
+    </rule>
+    <rule id="100201" level="12">
+        <if_sid>86600</if_sid>
+        <field name="event_type">^alert$</field>
+        <match>ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine)</match>
+        <description>Nmap scripting engine detected. </description>
+        <mitre>
+        <id>T1595</id>
+        </mitre>
+    </rule>
+    </group>'
+
+    # Créer le fichier local_rules.xml localement
+    echo "$LOCAL_RULES_CONTENT" > local_rules.xml
+
+    # Copier le fichier dans le conteneur
+    docker cp local_rules.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/rules/local_rules.xml
+
+    # Supprimer le fichier local
+    rm local_rules.xml
+
+    # g. Configuration de l'active response
+    echo ">>> Configuration de l'active response dans Wazuh..."
+
+    # Vérifier si la section 'command' pour 'firewall-drop' existe déjà
+    FIREWALL_DROP_EXIST=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" grep -c "<name>firewall-drop</name>" /var/ossec/etc/ossec.conf || true)
+
+    if [ "$FIREWALL_DROP_EXIST" -eq 0 ]; then
+        echo ">>> Ajout de la commande 'firewall-drop' dans ossec.conf..."
+
+        COMMAND_BLOCK='<command>
+        <name>firewall-drop</name>
+        <executable>firewall-drop</executable>
+        <timeout_allowed>yes</timeout_allowed>
+    </command>'
+
+        # Ajouter le bloc 'command' dans ossec.conf
+        docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/commands>/i \  $COMMAND_BLOCK" /var/ossec/etc/ossec.conf
+    fi
+
+    # Ajouter la configuration de l'active response
+    ACTIVE_RESPONSE_BLOCK='<active-response>
+        <command>firewall-drop</command>
+        <location>local</location>
+        <rules_id>100200,100201</rules_id>
+        <timeout>180</timeout>
+    </active-response>'
+
+    # Ajouter le bloc 'active-response' dans ossec.conf
+    docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
+
+    # h. Redémarrer le service Wazuh Manager
+    echo ">>> Redémarrage du service Wazuh Manager..."
+
+    docker-compose restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}"
+    sleep 120 # Attendre 2 minutes le temps qu'il redémarre !
+
+    echo ">>> Wazuh Manager est de nouveau démarré..."
+
+    # Vérifier à nouveau l'état des conteneurs
+    echo ">>> Vérification de l'état des conteneurs Docker..."
+
+    # Réinitialiser l'indicateur d'erreur
+    ERROR_FOUND=0
+
+    for CONTAINER_ID in $CONTAINERS; do
+        CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+        CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
+        if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
+            ERROR_FOUND=1
+        else
+            echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
+        fi
+    done
+
+    if [ $ERROR_FOUND -eq 1 ]; then
+        echo "Erreur : Un ou plusieurs conteneurs ne fonctionnent pas correctement."
+        echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
+        exit 1
+    else
+        echo "Tous les conteneurs fonctionnent correctement."
+    fi
+fi
 echo ">>> Intégration de Suricata avec Wazuh terminée."
+echo ">>> Veuillez patienter quelques minutes ..."
+sleep 180 # Attendre 3 minutes le temps qu'il redémarre complétement !
+
 
 
 echo "-----------------------------------------------------------"
@@ -854,8 +827,8 @@ echo " "
 echo " "
 
 echo "Identifiants SHUFFLE par défaut :"
-echo "Nom d'utilisateur : $SHUFFLE_DEFAULT_USERNAME"
-echo "Mot de passe : $SHUFFLE_DEFAULT_PASSWORD"
+echo "Nom d'utilisateur : ${GLOBAL_VARS["SHUFFLE_DEFAULT_USERNAME"]}"
+echo "Mot de passe : ${GLOBAL_VARS["SHUFFLE_DEFAULT_PASSWORD"]}"
 echo " "
 echo " "
 
