@@ -593,7 +593,7 @@ echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
 docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g Suricata -q
 if [ $? -ne 0 ]; then
     echo "Erreur : Impossible de créer le groupe d'agents 'Suricata'."
-    exit 1
+    #exit 1
 fi
 
 # b. Récupérer l'ID de l'agent Suricata
@@ -602,14 +602,16 @@ echo ">>> Récupération de l'ID de l'agent Suricata..."
 AGENT_INFO=$(docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_agents -l | grep 'suricata')
 if [ $? -ne 0 ]; then
     echo "Erreur : Impossible de récupérer l'ID de l'agent suricata"
-    exit 1
+    #exit 1
 fi
 
 if [ -z "$AGENT_INFO" ]; then
     echo "Erreur : L'agent Suricata n'a pas été trouvé. Veuillez vous assurer que l'agent est enregistré."
 else
 
-    AGENT_ID=$(echo "$AGENT_INFO" | awk '{print $1}')
+    # AGENT_ID=$(echo "$AGENT_INFO" | awk '{print $1}')
+    AGENT_ID=$(echo "$AGENT_INFO" | grep -oP '(?<=ID: )\d+') # Meuilleure méthode pour extraire l'ID
+
 
     echo "ID de l'agent Suricata : $AGENT_ID"
 
@@ -619,7 +621,7 @@ else
     docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
     if [ $? -ne 0 ]; then
         echo "Erreur : Impossible d'ajouter l'agent suricata au groupe Suricata"
-        exit 1
+        #exit 1
     fi
 
     # d. Ajouter la configuration partagée pour le groupe Suricata
