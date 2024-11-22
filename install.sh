@@ -734,8 +734,11 @@ else
 
     # h. Redémarrer le service Wazuh Manager
     echo ">>> Redémarrage du service Wazuh Manager..."
+    sleep 10 # On se rassure que le conteneur est totalement libéré de tout usage !
 
-    docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}"
+    docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" #Méthode de redémarage 1
+    # docker-compose restart wazuh.manager #Méthode de redémarage 2
+    echo "...   Redémarrage en cours    ..."
     sleep 120 # Attendre 2 minutes le temps qu'il redémarre !
 
     echo ">>> Wazuh Manager est de nouveau démarré..."
@@ -767,7 +770,7 @@ else
 fi
 echo ">>> Intégration de Suricata avec Wazuh terminée."
 echo ">>> Veuillez patienter quelques minutes ..."
-sleep 180 # Attendre 3 minutes le temps qu'il redémarre complétement !
+sleep 120 # Attendre 2 minutes le temps qu'il redémarre complétement !
 
 
 
