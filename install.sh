@@ -56,19 +56,22 @@ fi
 echo ">>> Mise à jour du système..."
 
 apt update -y && apt upgrade -y
-sudo apt install -y --fix-missing
-apt update -y && apt upgrade -y
+#apt install -y --fix-missing
+#apt update -y && apt upgrade -y
 
 # 3. Appliquer la configuration sysctl
 echo ">>> Configuration du paramètre vm.max_map_count..."
 sysctl -w vm.max_map_count=262144
-sysctl -p
+
 
 # Rendre la configuration persistante
 echo ">>> Rendre vm.max_map_count=262144 persistant..."
 if ! grep -q "vm.max_map_count=262144" /etc/sysctl.conf; then
     echo "vm.max_map_count=262144" >> /etc/sysctl.conf
 fi
+
+# Appliquer les modifications
+sysctl -p
 
 # 4. Installation des prérequis
 
@@ -474,6 +477,7 @@ echo "-----------------------------------------------------------"
 
 # 12. Lancement de la plateforme Docker
 echo ">>> Lancement de la plateforme Docker..."
+export COMPOSE_HTTP_TIMEOUT=300 # on augmente le délai d'attente de lancement des conteneurs par docker à 5 min
 docker-compose up -d
 
 echo ">>> Attente du démarrage des conteneurs..."
@@ -575,12 +579,20 @@ sleep 240 # Attendre 4 minutes
 # a. Créer un groupe d'agents appelé Suricata
 echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
 
-docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g Suricata -q
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g Suricata -q
+if [ $? -ne 0 ]; then
+    echo "Erreur : Impossible de créer le groupe d'agents 'Suricata'."
+    exit 1
+fi
 
 # b. Récupérer l'ID de l'agent Suricata
 echo ">>> Récupération de l'ID de l'agent Suricata..."
 
-AGENT_INFO=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_agents -l | grep 'suricata')
+AGENT_INFO=$(docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_agents -l | grep 'suricata')
+if [ $? -ne 0 ]; then
+    echo "Erreur : Impossible de récupérer l'ID de l'agent suricata"
+    exit 1
+fi
 
 if [ -z "$AGENT_INFO" ]; then
     echo "Erreur : L'agent Suricata n'a pas été trouvé. Veuillez vous assurer que l'agent est enregistré."
@@ -593,7 +605,11 @@ else
     # c. Ajouter l'agent Suricata au groupe 'Suricata'
     echo ">>> Ajout de l'agent Suricata au groupe 'Suricata'..."
 
-    docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
+    docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -i "$AGENT_ID" -g Suricata -q
+    if [ $? -ne 0 ]; then
+        echo "Erreur : Impossible d'ajouter l'agent suricata au groupe Suricata"
+        exit 1
+    fi
 
     # d. Ajouter la configuration partagée pour le groupe Suricata
     echo ">>> Configuration du fichier agent.conf pour le groupe 'Suricata'..."
@@ -672,35 +688,36 @@ else
     # Supprimer le fichier local
     rm local_rules.xml
 
-    # g. Configuration de l'active response
-    echo ">>> Configuration de l'active response dans Wazuh..."
+    # # g. Configuration de l'active response
+    # echo ">>> Configuration de l'active response dans Wazuh..."
 
-    # Vérifier si la section 'command' pour 'firewall-drop' existe déjà
-    FIREWALL_DROP_EXIST=$(docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" grep -c "<name>firewall-drop</name>" /var/ossec/etc/ossec.conf || true)
+    # # Vérifier si la section 'command' pour 'firewall-drop' existe déjà
+    # FIREWALL_DROP_EXIST=$(docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" grep -c "<name>firewall-drop</name>" /var/ossec/etc/ossec.conf || true)
 
-    if [ "$FIREWALL_DROP_EXIST" -eq 0 ]; then
-        echo ">>> Ajout de la commande 'firewall-drop' dans ossec.conf..."
+    # if [ "$FIREWALL_DROP_EXIST" -eq 0 ]; then
+    #     echo ">>> Ajout de la commande 'firewall-drop' dans ossec.conf..."
 
-        COMMAND_BLOCK='<command>
-        <name>firewall-drop</name>
-        <executable>firewall-drop</executable>
-        <timeout_allowed>yes</timeout_allowed>
-    </command>'
+    #     COMMAND_BLOCK='<command>
+    #     <name>firewall-drop</name>
+    #     <executable>firewall-drop</executable>
+    #     <timeout_allowed>yes</timeout_allowed>
+    # </command>'
 
-        # Ajouter le bloc 'command' dans ossec.conf
-        docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/commands>/i \  $COMMAND_BLOCK" /var/ossec/etc/ossec.conf
-    fi
+    #     # Ajouter le bloc 'command' dans ossec.conf
+    #     docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/commands>/i \  $COMMAND_BLOCK" /var/ossec/etc/ossec.conf
+    # fi
 
-    # Ajouter la configuration de l'active response
-    ACTIVE_RESPONSE_BLOCK='<active-response>
-        <command>firewall-drop</command>
-        <location>local</location>
-        <rules_id>100200,100201</rules_id>
-        <timeout>180</timeout>
-    </active-response>'
+    # # Ajouter la configuration de l'active response
+    # ACTIVE_RESPONSE_BLOCK='<active-response>
+    #     <command>firewall-drop</command>
+    #     <location>local</location>
+    #     <rules_id>100200,100201</rules_id>
+    #     <timeout>180</timeout>
+    # </active-response>'
 
-    # Ajouter le bloc 'active-response' dans ossec.conf
-    docker exec -it "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
+    # # Ajouter le bloc 'active-response' dans ossec.conf
+    # docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
+    #Pas nécessaire pour le moment ! RUPA
 
     # h. Redémarrer le service Wazuh Manager
     echo ">>> Redémarrage du service Wazuh Manager..."
