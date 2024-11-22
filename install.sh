@@ -465,10 +465,21 @@ SURICATA_YAML_PATH="wazuh/config/wazuh_suricata/suricata.yaml"
 
 if [ -f "$SURICATA_YAML_PATH" ]; then
     sed -i "s/\${SURICATA_IP}/${GLOBAL_VARS["WAZUH_SURICATA_IP"]}\/24/g" "$SURICATA_YAML_PATH"
-    sed -i "s/\${SURICATA_INT}/${GLOBAL_VARS["INTERFACE_RESEAU"]}\/24/g" "$SURICATA_YAML_PATH"
+    sed -i "s/\${SURICATA_INT}/${GLOBAL_VARS["INTERFACE_RESEAU"]}/g" "$SURICATA_YAML_PATH"
     echo "suricata.yaml mis à jour."
 else
     echo "Erreur : Le fichier suricata.yaml n'a pas été trouvé à l'emplacement $SURICATA_YAML_PATH."
+fi
+
+echo ">>> Mise à jour du fichier index.html avec l'adresse IP de l'app..."
+
+INDEX_HTML_PATH="reverse_proxy/nginx/html/index.html"
+
+if [ -f "$INDEX_HTML_PATH" ]; then
+    sed -i "s/\${APP_IP}/${SERVICES_IP}/g" "$INDEX_HTML_PATH"
+    echo "index.html mis à jour."
+else
+    echo "Erreur : Le fichier index.html n'a pas été trouvé à l'emplacement $INDEX_HTML_PATH."
 fi
 
 echo "-----------------------------------------------------------"
@@ -722,7 +733,7 @@ else
     # h. Redémarrer le service Wazuh Manager
     echo ">>> Redémarrage du service Wazuh Manager..."
 
-    docker-compose restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}"
+    docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}"
     sleep 120 # Attendre 2 minutes le temps qu'il redémarre !
 
     echo ">>> Wazuh Manager est de nouveau démarré..."
