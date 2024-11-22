@@ -114,8 +114,8 @@ services:
     restart: always
     hostname: wazuh.suricata
     network_mode: "host"
-    ports:
-      - 1520:1514
+    # ports:
+    #   - 1520:1514
     cap_add:
       - NET_ADMIN
       - NET_RAW
