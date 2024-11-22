@@ -82,8 +82,8 @@ services:
     image: wazuh/wazuh-dashboard:4.9.2
     hostname: wazuh.dashboard
     restart: always
-    # ports:
-    #   - 4443:5601
+    ports:
+      - 4443:5601
     environment:
       - INDEXER_USERNAME=${INDEXER_USERNAME}
       - INDEXER_PASSWORD=${INDEXER_PASSWORD}
@@ -114,8 +114,8 @@ services:
     restart: always
     hostname: wazuh.suricata
     network_mode: "host"
-    # ports:
-    #   - 1520:1514
+    ports:
+      - 1520:1514
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -137,8 +137,8 @@ services:
     image: jasonish/evebox:latest
     container_name: evebox
     restart: unless-stopped
-    # ports:
-    #   - "5636:5636"
+    ports:
+      - "5636:5636"
     command: evebox server --data-directory /var/lib/evebox --config /etc/evebox.yaml  --sqlite /var/log/rupa_suricata/eve.json --disable-geoip
     volumes:
     - ./wazuh/config/evebox/evebox.yaml:/etc/evebox.yaml
@@ -185,9 +185,9 @@ services:
     image: ghcr.io/shuffle/shuffle-frontend:latest
     container_name: shuffle-frontend
     hostname: shuffle-frontend
-    # ports:
-    #   - "${FRONTEND_PORT}:80"
-    #   - "${FRONTEND_PORT_HTTPS}:443"
+    ports:
+      - "${FRONTEND_PORT}:80"
+      - "${FRONTEND_PORT_HTTPS}:443"
     networks:
       - rupa-net
     environment:
