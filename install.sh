@@ -585,7 +585,7 @@ echo "-----------------------------------------------------------"
 # 14. Intégration de Suricata avec Wazuh
 
 echo ">>> Attente du démarrage complet des conteneurs..."
-sleep 240 # Attendre 4 minutes
+sleep 180 # Attendre 3 minutes
 
 # a. Créer un groupe d'agents appelé Suricata
 echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
