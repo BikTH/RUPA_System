@@ -120,17 +120,15 @@ fi
 echo ">>> Téléchargement des images Docker requises..."
 
 IMAGES=(
-    "nginx:latest"
-    "jasonish/evebox:latest"
+    "nginx:1.26.3"
+    "jasonish/evebox:0.20.3"
     "rupadante/wazuh-certs-generator:0.0.2"
     "rupadante/suricata-wazuh:latest"
-    "ghcr.io/shuffle/shuffle-frontend:latest"
-    "ghcr.io/shuffle/shuffle-backend:latest"
-    "ghcr.io/shuffle/shuffle-orborus:latest"
+    "postgres:15"
+    "n8nio/n8n:1.42.2"
     "wazuh/wazuh-dashboard:4.9.2"
     "wazuh/wazuh-manager:4.9.2"
-    "wazuh/wazuh-indexer:4.9.2"
-    "opensearchproject/opensearch:2.14.0"   
+    "wazuh/wazuh-indexer:4.9.2" 
 )
 
 for IMAGE in "${IMAGES[@]}"; do
@@ -145,26 +143,31 @@ echo "-----------------------------------------------------------"
 echo "   PRÉREQUIS INSTALLÉS ET IMAGES DOCKER PRÊTES             "
 echo "-----------------------------------------------------------"
 
-# 8. Création des variables globales et des dossiers nécessaires
+# 7. Création des variables globales et des dossiers nécessaires
 
 # Déclarer un tableau pour stocker les variables globales
 declare -A GLOBAL_VARS
 
 echo ">>> Création des dossiers nécessaires..."
 
-# Créer le dossier ./shuffle/shuffle-database
-echo ">>> Création du dossier ./shuffle/shuffle-database..."
-mkdir -p shuffle/shuffle-database
-chown -R 1000:1000 shuffle/shuffle-database
+# # Créer le dossier ./shuffle/shuffle-database
+# echo ">>> Création du dossier ./shuffle/shuffle-database..."
+# mkdir -p shuffle/shuffle-database
+# chown -R 1000:1000 shuffle/shuffle-database
+
+# Créer le dossier ./n8n/n8n_data
+echo ">>> Création du dossier n8n/n8n_data"
+mkdir -p n8n/n8n_data
+chown -R 1000:1000 n8n/n8n_data
 
 # Désactiver le swap
 echo ">>> Désactivation du swap..."
 swapoff -a
 
-# Vérifier et ajouter l'utilisateur 'opensearch' si nécessaire
-if ! id "opensearch" &>/dev/null; then
-    useradd opensearch
-fi
+# # Vérifier et ajouter l'utilisateur 'opensearch' si nécessaire
+# if ! id "opensearch" &>/dev/null; then
+#     useradd opensearch
+# fi
 
 # Générer les certificats auto-signés pour Wazuh
 echo ">>> Génération des certificats auto-signés pour Wazuh..."
@@ -177,23 +180,56 @@ mkdir -p reverse_proxy/nginx/ssl
 # Demander les informations pour le certificat SSL
 echo ">>> Génération des certificats SSL pour le portail RUPA..."
 
-read -r -p "Entrez le nom de votre organisation : " ORG_NAME
-GLOBAL_VARS["ORG_NAME"]=$ORG_NAME
+# Récupération des informations auprés de l'utilisateur
+read -r -p "Pays (2 lettres) [ex: CM, FR, BE] : " SSL_COUNTRY
+read -r -p "État ou Région : " SSL_STATE
+read -r -p "Ville : " SSL_CITY
+read -r -p "Nom de l'organisation : " SSL_ORG
+read -r -p "Nom de l'unité organisationnelle : " SSL_ORG_UNIT
+read -r -p "Nom commun (CN) [ex: domaine ou hostname] : " SSL_CN
+read -r -p "Adresse e-mail du contact : " SSL_EMAIL
 
-read -r -p "Entrez le nom de votre unité organisationnelle : " ORG_UNIT
-GLOBAL_VARS["ORG_UNIT"]=$ORG_UNIT
-
-read -r -p "Entrez votre adresse e-mail : " EMAIL_ADDRESS
-GLOBAL_VARS["EMAIL_ADDRESS"]=$EMAIL_ADDRESS
+# Conserver ces valeurs pour les réutiliser si besoin dans le post_install
+GLOBAL_VARS["SSL_COUNTRY"]=$SSL_COUNTRY
+GLOBAL_VARS["SSL_STATE"]=$SSL_STATE
+GLOBAL_VARS["SSL_CITY"]=$SSL_CITY
+GLOBAL_VARS["SSL_ORG"]=$SSL_ORG
+GLOBAL_VARS["SSL_ORG_UNIT"]=$SSL_ORG_UNIT
+GLOBAL_VARS["SSL_CN"]=$SSL_CN
+GLOBAL_VARS["SSL_EMAIL"]=$SSL_EMAIL
 
 # Générer le certificat SSL auto-signé
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout reverse_proxy/nginx/ssl/rupa_portal.key \
     -out reverse_proxy/nginx/ssl/rupa_portal.crt \
-    -subj "/C=CM/ST=CENTRE/L=YAOUNDE/O=${ORG_NAME}/OU=${ORG_UNIT}/CN=localhost/emailAddress=${EMAIL_ADDRESS}"
+    -subj "/C=${SSL_COUNTRY}/ST=${SSL_STATE}/L=${SSL_CITY}/O=${SSL_ORG}/OU=${SSL_ORG_UNIT}/CN=${SSL_CN}/emailAddress=${SSL_EMAIL}"
+
+
+# 8. Configuration de la timezone pour N8N
+
+echo ">>> Configuration de la timezone pour N8N..."
+
+# On tente de récupérer la timezone via timedatectl
+detected_tz="$(timedatectl show -p Timezone --value 2>/dev/null)"
+
+# Si c'est vide ou que timedatectl n'est pas dispo, on essaie /etc/timezone
+if [ -z "$detected_tz" ]; then
+    if [ -f /etc/timezone ]; then
+        detected_tz="$(cat /etc/timezone)"
+    fi
+fi
+
+# Si on n'a toujours rien, on choisit une timezone par défaut
+if [ -z "$detected_tz" ]; then
+    detected_tz="Africa/Douala"
+fi
+
+echo "Fuseau horaire détecté: $detected_tz"
+GLOBAL_VARS["TZ"]=$detected_tz
+GLOBAL_VARS["GENERIC_TIMEZONE"]=$detected_tz
+
 
 # 9. Gestion des interfaces réseau
-
 
 echo ">>> Détection des interfaces réseau disponibles..."
 
@@ -303,16 +339,16 @@ GLOBAL_VARS["API_USERNAME"]=$API_USERNAME
 API_PASSWORD="MyS3cr37P450r.*-"
 GLOBAL_VARS["API_PASSWORD"]=$API_PASSWORD
 
-# Configuration de Shuffle
-echo ">>> Configuration de Shuffle..."
+# Configuration de N8N
+echo ">>> Configuration de N8N..."
 
 # Nom d'utilisateur par défaut pour Shuffle
-SHUFFLE_DEFAULT_USERNAME="admin"
-GLOBAL_VARS["SHUFFLE_DEFAULT_USERNAME"]=$SHUFFLE_DEFAULT_USERNAME
+N8N_DEFAULT_USER="admin"
+GLOBAL_VARS["N8N_DEFAULT_USER"]=$N8N_DEFAULT_USER
 
 # Mot de passe par défaut pour Shuffle
-SHUFFLE_DEFAULT_PASSWORD="admin"
-GLOBAL_VARS["SHUFFLE_DEFAULT_PASSWORD"]=$SHUFFLE_DEFAULT_PASSWORD
+N8N_DEFAULT_PASS="superadminpass"
+GLOBAL_VARS["N8N_DEFAULT_PASS"]=$N8N_DEFAULT_PASS
 
 
 
@@ -356,108 +392,30 @@ INTERFACE_RESEAU=${GLOBAL_VARS["INTERFACE_RESEAU"]}
 PUID=${GLOBAL_VARS["PUID"]}
 PGID=${GLOBAL_VARS["PGID"]}
 
-####################### SHUFFLE #######################
-# Default execution environment for workers
-ORG_ID=Shuffle
-ENVIRONMENT_NAME=RUPA_Shuffle
+####################### N 8 N #######################
+# Variables pour postgre
+POSTGRES_USER=n8n
+POSTGRES_PASSWORD=supersecretpg
+POSTGRES_DB=n8ndb
 
-# Sanitize liquid.py input
-LIQUID_SANITIZE_INPUT=true
+# Variables pour l'authentification N8N
+N8N_BASIC_AUTH_USER=${GLOBAL_VARS["N8N_DEFAULT_USER"]}
+N8N_BASIC_AUTH_PASSWORD=${GLOBAL_VARS["N8N_DEFAULT_PASS"]}
 
-# Remote github config for first load
-SHUFFLE_DOWNLOAD_WORKFLOW_LOCATION=
-SHUFFLE_DOWNLOAD_WORKFLOW_USERNAME=
-SHUFFLE_DOWNLOAD_WORKFLOW_PASSWORD=
-SHUFFLE_DOWNLOAD_WORKFLOW_BRANCH=
+GENERIC_TIMEZONE=${GLOBAL_VARS["GENERIC_TIMEZONE"]}
+TZ=${GLOBAL_VARS["TZ"]}
 
-SHUFFLE_APP_DOWNLOAD_LOCATION=https://github.com/shuffle/python-apps
-SHUFFLE_DOWNLOAD_AUTH_USERNAME=
-SHUFFLE_DOWNLOAD_AUTH_PASSWORD=
-SHUFFLE_DOWNLOAD_AUTH_BRANCH=
-SHUFFLE_APP_FORCE_UPDATE=false
-
-# User config for first load. Username & PW: min length 3
-SHUFFLE_DEFAULT_USERNAME=${GLOBAL_VARS["SHUFFLE_DEFAULT_USERNAME"]}
-SHUFFLE_DEFAULT_PASSWORD=${GLOBAL_VARS["SHUFFLE_DEFAULT_PASSWORD"]}
-SHUFFLE_DEFAULT_APIKEY=
-
-# Local location of your app directory. Can't use ~/
-SHUFFLE_APP_HOTLOAD_FOLDER=./shuffle/shuffle-apps
-SHUFFLE_APP_HOTLOAD_LOCATION=./shuffle/shuffle-apps
-SHUFFLE_FILE_LOCATION=./shuffle/shuffle-files
-
-# Encryption modifier
-SHUFFLE_ENCRYPTION_MODIFIER=
-
-# Other configs
-BASE_URL=http://shuffle-backend:5001
-SSO_REDIRECT_URL=http://localhost:3001
-BACKEND_HOSTNAME=shuffle-backend
-BACKEND_PORT=5001
-FRONTEND_PORT=3001
-FRONTEND_PORT_HTTPS=3443
-
-OUTER_HOSTNAME=shuffle-backend
-DB_LOCATION=./shuffle/shuffle-database
-DOCKER_API_VERSION=1.40
-
-# Orborus/Proxy configurations
-HTTP_PROXY=
-HTTPS_PROXY=
-SHUFFLE_PASS_WORKER_PROXY=TRUE
-SHUFFLE_PASS_APP_PROXY=TRUE
-SHUFFLE_INTERNAL_HTTP_PROXY=NOPROXY
-SHUFFLE_INTERNAL_HTTPS_PROXY=NOPROXY
-TZ=Europe/Amsterdam
-ORBORUS_CONTAINER_NAME=
-SHUFFLE_ORBORUS_STARTUP_DELAY=
-SHUFFLE_SKIPSSL_VERIFY=true
-IS_KUBERNETES=false
-
-SHUFFLE_BASE_IMAGE_NAME=shuffle
-SHUFFLE_BASE_IMAGE_REGISTRY=ghcr.io
-SHUFFLE_BASE_IMAGE_REPOSITORY=frikky
-SHUFFLE_BASE_IMAGE_TAG_SUFFIX=latest
-
-SHUFFLE_SWARM_BRIDGE_DEFAULT_INTERFACE=eth0
-SHUFFLE_SWARM_BRIDGE_DEFAULT_MTU=1500
-
-SHUFFLE_MEMCACHED=
-SHUFFLE_CONTAINER_AUTO_CLEANUP=true
-SHUFFLE_ORBORUS_EXECUTION_CONCURRENCY=5
-SHUFFLE_HEALTHCHECK_DISABLED=false
-SHUFFLE_ELASTIC=true
-SHUFFLE_LOGS_DISABLED=false
-SHUFFLE_CHAT_DISABLED=false
-SHUFFLE_DISABLE_RERUN_AND_ABORT=false
-SHUFFLE_RERUN_SCHEDULE=300
-SHUFFLE_WORKER_SERVER_URL=
-SHUFFLE_ORBORUS_PULL_TIME=
-SHUFFLE_MAX_EXECUTION_DEPTH=
-
-# DATABASE CONFIGURATIONS
-DATASTORE_EMULATOR_HOST=shuffle-database:8000
-SHUFFLE_OPENSEARCH_URL=https://shuffle-opensearch:9200
-SHUFFLE_OPENSEARCH_USERNAME="admin"
-SHUFFLE_OPENSEARCH_PASSWORD="StrongShufflePassword321!"
-SHUFFLE_OPENSEARCH_CERTIFICATE_FILE=
-SHUFFLE_OPENSEARCH_APIKEY=
-SHUFFLE_OPENSEARCH_CLOUDID=
-SHUFFLE_OPENSEARCH_PROXY=
-SHUFFLE_OPENSEARCH_INDEX_PREFIX=
-SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY=true
-
-# Tenzir related
-SHUFFLE_TENZIR_URL=
+N8N_PORT=5678
+N8N_HOST=localhost
+WEBHOOK_URL=http://localhost:5678
 
 DEBUG_MODE=false
 EOF
 
 echo "Fichier .env créé avec succès."
 
+
 # 11. Mise à jour du fichier suricata.yaml
-
-
 
 echo ">>> Mise à jour du fichier suricata.yaml avec l'adresse IP de Suricata..."
 
@@ -488,8 +446,8 @@ echo "-----------------------------------------------------------"
 
 # 12. Lancement de la plateforme Docker
 echo ">>> Lancement de la plateforme Docker..."
-export COMPOSE_HTTP_TIMEOUT=300 # on augmente le délai d'attente de lancement des conteneurs par docker à 5 min
-docker-compose up -d
+export COMPOSE_HTTP_TIMEOUT=300 # on augmente le délai d'attente de lancement des conteneurs par docker à 5 min pour éviter un bug en cas de lenteur au lancement
+docker-compose up -d # Lancer les conteneurs en arrière-plan
 
 echo ">>> Attente du démarrage des conteneurs..."
 sleep 60 # Attendre 1 minutes
@@ -505,10 +463,8 @@ WAZUH_DASHBOARD_CONTAINER=""
 WAZUH_SURICATA_CONTAINER=""
 EVEBOX_CONTAINER=""
 NGINX_CONTAINER=""
-SHUFFLE_FRONTEND_CONTAINER=""
-SHUFFLE_BACKEND_CONTAINER=""
-SHUFFLE_ORBORUS_CONTAINER=""
-SHUFFLE_OPENSEARCH_CONTAINER=""
+POSTGRES_CONTAINER=""
+N8N_CONTAINER=""
 
 # Récupérer la liste des conteneurs définis dans docker-compose
 CONTAINERS=$(docker-compose ps -q)
@@ -539,14 +495,10 @@ for CONTAINER_ID in $CONTAINERS; do
         EVEBOX_CONTAINER="$CONTAINER_NAME"
     elif [[ "$CONTAINER_NAME" == *"nginx"* ]]; then
         NGINX_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"shuffle-frontend"* ]]; then
-        SHUFFLE_FRONTEND_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"shuffle-backend"* ]]; then
-        SHUFFLE_BACKEND_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"shuffle-orborus"* ]]; then
-        SHUFFLE_ORBORUS_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"shuffle-opensearch"* ]]; then
-        SHUFFLE_OPENSEARCH_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"n8n_postgres"* ]]; then
+        POSTGRES_CONTAINER="$CONTAINER_NAME"
+    elif [[ "$CONTAINER_NAME" == *"n8n"* ]]; then
+        N8N_CONTAINER="$CONTAINER_NAME"
     fi
 done
 
@@ -565,10 +517,8 @@ GLOBAL_VARS["WAZUH_DASHBOARD_CONTAINER"]="$WAZUH_DASHBOARD_CONTAINER"
 GLOBAL_VARS["WAZUH_SURICATA_CONTAINER"]="$WAZUH_SURICATA_CONTAINER"
 GLOBAL_VARS["EVEBOX_CONTAINER"]="$EVEBOX_CONTAINER"
 GLOBAL_VARS["NGINX_CONTAINER"]="$NGINX_CONTAINER"
-GLOBAL_VARS["SHUFFLE_FRONTEND_CONTAINER"]="$SHUFFLE_FRONTEND_CONTAINER"
-GLOBAL_VARS["SHUFFLE_BACKEND_CONTAINER"]="$SHUFFLE_BACKEND_CONTAINER"
-GLOBAL_VARS["SHUFFLE_ORBORUS_CONTAINER"]="$SHUFFLE_ORBORUS_CONTAINER"
-GLOBAL_VARS["SHUFFLE_OPENSEARCH_CONTAINER"]="$SHUFFLE_OPENSEARCH_CONTAINER"
+GLOBAL_VARS["POSTGRES_CONTAINER"]="$POSTGRES_CONTAINER"
+GLOBAL_VARS["N8N_CONTAINER"]="$N8N_CONTAINER"
 
 # Vérifier que tous les conteneurs requis ont été trouvés
 # Vérifier que le conteneur wazuh-manager a été trouvé
@@ -585,7 +535,7 @@ echo "-----------------------------------------------------------"
 # 14. Intégration de Suricata avec Wazuh
 
 echo ">>> Attente du démarrage complet des conteneurs..."
-sleep 180 # Attendre 3 minutes
+sleep 120 # Attendre 2 minutes
 
 # a. Créer un groupe d'agents appelé Suricata
 echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
@@ -859,9 +809,9 @@ echo "Mot de passe : SecretPassword"
 echo " "
 echo " "
 
-echo "Identifiants SHUFFLE par défaut :"
-echo "Nom d'utilisateur : ${GLOBAL_VARS["SHUFFLE_DEFAULT_USERNAME"]}"
-echo "Mot de passe : ${GLOBAL_VARS["SHUFFLE_DEFAULT_PASSWORD"]}"
+echo "Identifiants N8N par défaut :"
+echo "Nom d'utilisateur : ${GLOBAL_VARS["N8N_DEFAULT_USER"]}"
+echo "Mot de passe : ${GLOBAL_VARS["N8N_DEFAULT_PASS"]}"
 echo " "
 echo " "
 

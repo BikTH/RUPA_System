@@ -135,7 +135,7 @@ services:
       - wazuh.dashboard
 
   evebox:
-    image: jasonish/evebox:latest
+    image: jasonish/evebox:0.20.3
     container_name: evebox
     restart: unless-stopped
     ports:
@@ -153,7 +153,7 @@ services:
 
   ############ REVERSE_PROXY + PORTAIL DE CONNEXION
   nginx:
-    image: nginx:latest
+    image: nginx:1.26.3
     container_name: nginx
     restart: always
     ports:
@@ -164,131 +164,60 @@ services:
       - ./reverse_proxy/nginx/html:/usr/share/nginx/html
       - ./reverse_proxy/nginx/ssl:/etc/nginx/ssl
     depends_on:
-      - frontend
+      - wazuh.dashboard
+      - n8n
     networks:
       - rupa-net
 
-  # rupa_portal:
-  #   build: ./reverse_proxy/rupa_portal
-  #   container_name: rupa_portal
-  #   environment:
-  #     - SECRET_KEY=E5ZF4G6H541Z05T424254213RF4EQR84fr2ref21e
-  #   volumes:
-  #     - ./reverse_proxy/rupa_portal:/app
-  #   depends_on:
-  #     - elk
-  #     - wazuh.manager
-  #   networks:
-  #     - backend
-
-  ########### SHUFFLE
-  frontend:
-    image: ghcr.io/shuffle/shuffle-frontend:latest
-    container_name: shuffle-frontend
-    hostname: shuffle-frontend
-    ports:
-      - "${FRONTEND_PORT}:80"
-      - "${FRONTEND_PORT_HTTPS}:443"
-    networks:
-      - rupa-net
-    environment:
-      - BACKEND_HOSTNAME=${BACKEND_HOSTNAME}
+  ########### N8N
+  postgres:
+    image: postgres:15
+    container_name: n8n_postgres
     restart: unless-stopped
-    depends_on:
-      - backend
-  
-  backend:
-    image: ghcr.io/shuffle/shuffle-backend:latest
-    container_name: shuffle-backend
-    hostname: ${BACKEND_HOSTNAME}
-    # Here for debugging:
-    ports:
-      - "${BACKEND_PORT}:5001"
-    networks:
-      - rupa-net
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${SHUFFLE_APP_HOTLOAD_LOCATION}:/shuffle-apps:z
-      - ${SHUFFLE_FILE_LOCATION}:/shuffle-files:z
-    env_file: .env
-    environment:
-      #- DOCKER_HOST=tcp://docker-socket-proxy:2375
-      - SHUFFLE_APP_HOTLOAD_FOLDER=${SHUFFLE_APP_HOTLOAD_FOLDER}
-      - SHUFFLE_FILE_LOCATION=${SHUFFLE_FILE_LOCATION}
-      - SHUFFLE_DEFAULT_USERNAME=${SHUFFLE_DEFAULT_USERNAME}
-      - SHUFFLE_DEFAULT_PASSWORD=${SHUFFLE_DEFAULT_PASSWORD}
-    restart: unless-stopped
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rupa-net
     depends_on:
       - wazuh.suricata
 
-  orborus:
-    image: ghcr.io/shuffle/shuffle-orborus:latest
-    container_name: shuffle-orborus
-    hostname: shuffle-orborus
-    networks:
-      - rupa-net
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - SHUFFLE_APP_SDK_TIMEOUT=300
-      - SHUFFLE_ORBORUS_EXECUTION_CONCURRENCY=7 # The amount of concurrent executions Orborus can handle. 
-      #- DOCKER_HOST=tcp://docker-socket-proxy:2375
-      - ENVIRONMENT_NAME=${ENVIRONMENT_NAME}
-      - BASE_URL=http://${OUTER_HOSTNAME}:5001
-      #- DOCKER_API_VERSION=1.40
-      - SHUFFLE_BASE_IMAGE_NAME=${SHUFFLE_BASE_IMAGE_NAME}
-      - SHUFFLE_BASE_IMAGE_REGISTRY=${SHUFFLE_BASE_IMAGE_REGISTRY}
-      - SHUFFLE_BASE_IMAGE_TAG_SUFFIX=${SHUFFLE_BASE_IMAGE_TAG_SUFFIX}
-      - HTTP_PROXY=${HTTP_PROXY}
-      - HTTPS_PROXY=${HTTPS_PROXY}
-      - SHUFFLE_PASS_WORKER_PROXY=${SHUFFLE_PASS_WORKER_PROXY}
-      - SHUFFLE_PASS_APP_PROXY=${SHUFFLE_PASS_APP_PROXY}
-      - SHUFFLE_STATS_DISABLED=true
+  n8n:
+    image: n8nio/n8n:1.42.2
+    container_name: n8n
     restart: unless-stopped
-    security_opt:
-      - seccomp:unconfined
-    depends_on:
-      - wazuh.suricata
-
-  opensearch:
-    image: opensearchproject/opensearch:2.14.0
-    hostname: shuffle-opensearch
-    container_name: shuffle-opensearch
-    env_file: .env
-    #deploy:
-      #resources:
-      #  limits:
-      #    cpus: "1.0"
-      #    memory: "2G"
-    environment:
-      - "OPENSEARCH_JAVA_OPTS=-Xms2048m -Xmx2048m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
-      - bootstrap.memory_lock=true
-      - DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI=true
-      - cluster.initial_master_nodes=shuffle-opensearch
-      - cluster.routing.allocation.disk.threshold_enabled=false
-      - cluster.name=shuffle-cluster
-      - node.name=shuffle-opensearch
-      - node.store.allow_mmap=false
-      - discovery.seed_hosts=shuffle-opensearch
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${SHUFFLE_OPENSEARCH_PASSWORD}
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536 
-        hard: 65536
-    volumes:
-      - ${DB_LOCATION}:/usr/share/opensearch/data:z
     ports:
-      - 9400:9200
+      - "${N8N_PORT}:5678"
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_POSTGRESDB_SCHEMA=public
+
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - TZ=${TZ}
+      #
+      - N8N_HOST=${N8N_HOST}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+    volumes:
+      - n8n_data:/home/node/.n8n
     networks:
       - rupa-net
-    restart: unless-stopped
     depends_on:
-      - wazuh.suricata
+      - n8n_postgres
 
 volumes:
+  ###VOLUME WAZUH
   wazuh_api_configuration:
   wazuh_etc:
   wazuh_logs:
@@ -305,7 +234,7 @@ volumes:
   wazuh-dashboard-custom:
   data_wazuh-suricata_logs:
   data_wazuh-suricata_rules-update:
-  # #VOLUMES SURICATA + ELK + EVEBOX
+  ###VOLUMES SURICATA + ELK + EVEBOX
   evebox-data:
   data_e_data_elasticsearch:
   data_e_logs_elasticsearch:
@@ -314,10 +243,135 @@ volumes:
   # data_k_logs_kibana:
   # data_suricata_logs:
   # data_suricata_rules-update:
+  ###VOLUMES N8N
+  postgres_data:
+  n8n_data:
 
 networks:
   rupa-net:
     driver: bridge
+
+  # rupa_portal:
+  #   build: ./reverse_proxy/rupa_portal
+  #   container_name: rupa_portal
+  #   environment:
+  #     - SECRET_KEY=E5ZF4G6H541Z05T424254213RF4EQR84fr2ref21e
+  #   volumes:
+  #     - ./reverse_proxy/rupa_portal:/app
+  #   depends_on:
+  #     - elk
+  #     - wazuh.manager
+  #   networks:
+  #     - backend
+
+  ########### SHUFFLE
+  # frontend:
+  #   image: ghcr.io/shuffle/shuffle-frontend:latest
+  #   container_name: shuffle-frontend
+  #   hostname: shuffle-frontend
+  #   ports:
+  #     - "${FRONTEND_PORT}:80"
+  #     - "${FRONTEND_PORT_HTTPS}:443"
+  #   networks:
+  #     - rupa-net
+  #   environment:
+  #     - BACKEND_HOSTNAME=${BACKEND_HOSTNAME}
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - backend
+  
+  # backend:
+  #   image: ghcr.io/shuffle/shuffle-backend:latest
+  #   container_name: shuffle-backend
+  #   hostname: ${BACKEND_HOSTNAME}
+  #   # Here for debugging:
+  #   ports:
+  #     - "${BACKEND_PORT}:5001"
+  #   networks:
+  #     - rupa-net
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - ${SHUFFLE_APP_HOTLOAD_LOCATION}:/shuffle-apps:z
+  #     - ${SHUFFLE_FILE_LOCATION}:/shuffle-files:z
+  #   env_file: .env
+  #   environment:
+  #     #- DOCKER_HOST=tcp://docker-socket-proxy:2375
+  #     - SHUFFLE_APP_HOTLOAD_FOLDER=${SHUFFLE_APP_HOTLOAD_FOLDER}
+  #     - SHUFFLE_FILE_LOCATION=${SHUFFLE_FILE_LOCATION}
+  #     - SHUFFLE_DEFAULT_USERNAME=${SHUFFLE_DEFAULT_USERNAME}
+  #     - SHUFFLE_DEFAULT_PASSWORD=${SHUFFLE_DEFAULT_PASSWORD}
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - wazuh.suricata
+
+  # orborus:
+  #   image: ghcr.io/shuffle/shuffle-orborus:latest
+  #   container_name: shuffle-orborus
+  #   hostname: shuffle-orborus
+  #   networks:
+  #     - rupa-net
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - SHUFFLE_APP_SDK_TIMEOUT=300
+  #     - SHUFFLE_ORBORUS_EXECUTION_CONCURRENCY=7 # The amount of concurrent executions Orborus can handle. 
+  #     #- DOCKER_HOST=tcp://docker-socket-proxy:2375
+  #     - ENVIRONMENT_NAME=${ENVIRONMENT_NAME}
+  #     - BASE_URL=http://${OUTER_HOSTNAME}:5001
+  #     #- DOCKER_API_VERSION=1.40
+  #     - SHUFFLE_BASE_IMAGE_NAME=${SHUFFLE_BASE_IMAGE_NAME}
+  #     - SHUFFLE_BASE_IMAGE_REGISTRY=${SHUFFLE_BASE_IMAGE_REGISTRY}
+  #     - SHUFFLE_BASE_IMAGE_TAG_SUFFIX=${SHUFFLE_BASE_IMAGE_TAG_SUFFIX}
+  #     - HTTP_PROXY=${HTTP_PROXY}
+  #     - HTTPS_PROXY=${HTTPS_PROXY}
+  #     - SHUFFLE_PASS_WORKER_PROXY=${SHUFFLE_PASS_WORKER_PROXY}
+  #     - SHUFFLE_PASS_APP_PROXY=${SHUFFLE_PASS_APP_PROXY}
+  #     - SHUFFLE_STATS_DISABLED=true
+  #   restart: unless-stopped
+  #   security_opt:
+  #     - seccomp:unconfined
+  #   depends_on:
+  #     - wazuh.suricata
+
+  # opensearch:
+  #   image: opensearchproject/opensearch:2.14.0
+  #   hostname: shuffle-opensearch
+  #   container_name: shuffle-opensearch
+  #   env_file: .env
+  #   #deploy:
+  #     #resources:
+  #     #  limits:
+  #     #    cpus: "1.0"
+  #     #    memory: "2G"
+  #   environment:
+  #     - "OPENSEARCH_JAVA_OPTS=-Xms2048m -Xmx2048m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+  #     - bootstrap.memory_lock=true
+  #     - DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI=true
+  #     - cluster.initial_master_nodes=shuffle-opensearch
+  #     - cluster.routing.allocation.disk.threshold_enabled=false
+  #     - cluster.name=shuffle-cluster
+  #     - node.name=shuffle-opensearch
+  #     - node.store.allow_mmap=false
+  #     - discovery.seed_hosts=shuffle-opensearch
+  #     - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${SHUFFLE_OPENSEARCH_PASSWORD}
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #     nofile:
+  #       soft: 65536 
+  #       hard: 65536
+  #   volumes:
+  #     - ${DB_LOCATION}:/usr/share/opensearch/data:z
+  #   ports:
+  #     - 9400:9200
+  #   networks:
+  #     - rupa-net
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - wazuh.suricata
+
+
 
     ############ SURICATA ELK
   # suricata:
