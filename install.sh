@@ -558,7 +558,7 @@ fi
 # b. Récupérer l'ID de l'agent Suricata
 echo ">>> Récupération de l'ID de l'agent Suricata..."
 
-AGENT_INFO=$(docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_agents -l | grep 'suricata')
+AGENT_INFO=$(docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_agents -l | grep -i 'Suricata')
 if [ $? -ne 0 ]; then
     echo "Erreur : Impossible de récupérer l'ID de l'agent suricata"
     #exit 1
@@ -693,7 +693,7 @@ else
 
     # h. Redémarrer le service Wazuh Manager
     echo ">>> Redémarrage du service Wazuh Manager..."
-    sleep 10 # On se rassure que le conteneur est totalement libéré de tout usage !
+    sleep 60 # On se rassure que le conteneur est totalement libéré de tout usage !
 
     docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" #Méthode de redémarage 1
     # docker-compose restart wazuh.manager #Méthode de redémarage 2
