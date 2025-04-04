@@ -214,7 +214,7 @@ services:
     networks:
       - rupa-net
     depends_on:
-      - n8n_postgres
+      - postgres
 
 volumes:
   ###VOLUME WAZUH
