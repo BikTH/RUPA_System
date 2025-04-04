@@ -409,6 +409,15 @@ N8N_PORT=5678
 N8N_HOST=localhost
 WEBHOOK_URL=http://localhost:5678
 
+N8N_EMAIL_MODE=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tonadresse@gmail.com
+SMTP_PASS=ton_mot_de_passe_ou_mot_de_passe_app
+N8N_SMTP_SENDER="RUPA System <tonadresse@gmail.com>"
+N8N_SMTP_SSL=true
+N8N_SMTP_TLS=true
+
 DEBUG_MODE=false
 EOF
 
