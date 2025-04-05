@@ -45,6 +45,13 @@ header {
     align-items: center;
 }
 
+img-head {
+    max-width: 20%;
+    height: auto;
+    display: block;
+    margin: auto;
+}
+
 #company-logo {
     text-align: center;
     margin-bottom: 20px;
