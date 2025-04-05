@@ -478,46 +478,63 @@ N8N_CONTAINER=""
 # Récupérer la liste des conteneurs définis dans docker-compose
 CONTAINERS=$(docker-compose ps -q)
 
-# Initialiser un indicateur d'erreur
+# Vérifier l'état de chaque conteneur
 ERROR_FOUND=0
+MAX_RETRIES=10
+RETRY_COUNT=0
+SLEEP_BETWEEN=15
 
-for CONTAINER_ID in $CONTAINERS; do
-    CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
-    CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
-    if [ "$CONTAINER_STATUS" != "running" ]; then
-        echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
-        ERROR_FOUND=1
+# Boucle de vérification
+while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
+    ERROR_FOUND=0
+    for CONTAINER_ID in $CONTAINERS; do
+        CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+        CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
+
+        if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
+            ERROR_FOUND=1
+        else
+            echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
+        fi
+    done
+
+    if [ "$ERROR_FOUND" -eq 1 ]; then
+        ((RETRY_COUNT++))
+        echo "Certains conteneurs ne sont pas encore démarrés."
+        echo "Tentative $RETRY_COUNT/$MAX_RETRIES. Nouvelle vérification dans $SLEEP_BETWEEN secondes..."
+        echo "||--------------------------------------------------------------------------------------||"
+        sleep $SLEEP_BETWEEN
     else
-        echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
-    fi
-
-    # Identifier les conteneurs en fonction de leur nom
-    if [[ "$CONTAINER_NAME" == *"wazuh.manager"* ]]; then
-        WAZUH_MANAGER_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"wazuh.indexer"* ]]; then
-        WAZUH_INDEXER_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"wazuh.dashboard"* ]]; then
-        WAZUH_DASHBOARD_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"wazuh.suricata"* ]]; then
-        WAZUH_SURICATA_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"evebox"* ]]; then
-        EVEBOX_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"nginx"* ]]; then
-        NGINX_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"n8n_postgres"* ]]; then
-        POSTGRES_CONTAINER="$CONTAINER_NAME"
-    elif [[ "$CONTAINER_NAME" == *"n8n"* ]]; then
-        N8N_CONTAINER="$CONTAINER_NAME"
+        echo "Tous les conteneurs ont bien démarés."
+        break
     fi
 done
 
+# Renvoyer un message en cas d'erreur ou de réussite
 if [ $ERROR_FOUND -eq 1 ]; then
     echo "Erreur : Un ou plusieurs conteneurs ne fonctionnent pas correctement."
     echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
     exit 1
 else
+    # Identifier les conteneurs en fonction de leur nom
+    for CONTAINER_ID in $CONTAINERS; do
+        CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+
+        case "$CONTAINER_NAME" in
+            *wazuh.manager*)   WAZUH_MANAGER_CONTAINER="$CONTAINER_NAME" ;;
+            *wazuh.indexer*)   WAZUH_INDEXER_CONTAINER="$CONTAINER_NAME" ;;
+            *wazuh.dashboard*) WAZUH_DASHBOARD_CONTAINER="$CONTAINER_NAME" ;;
+            *wazuh.suricata*)  WAZUH_SURICATA_CONTAINER="$CONTAINER_NAME" ;;
+            *evebox*)          EVEBOX_CONTAINER="$CONTAINER_NAME" ;;
+            *nginx*)           NGINX_CONTAINER="$CONTAINER_NAME" ;;
+            *n8n_postgres*)    POSTGRES_CONTAINER="$CONTAINER_NAME" ;;
+            *n8n*)             N8N_CONTAINER="$CONTAINER_NAME" ;;
+        esac
+    done
     echo "Tous les conteneurs fonctionnent correctement."
 fi
+
 
 # Stocker les noms des conteneurs dans le tableau GLOBAL_VARS
 GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]="$WAZUH_MANAGER_CONTAINER"
@@ -532,7 +549,7 @@ GLOBAL_VARS["N8N_CONTAINER"]="$N8N_CONTAINER"
 # Vérifier que tous les conteneurs requis ont été trouvés
 # Vérifier que le conteneur wazuh-manager a été trouvé
 if [ -z "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" ]; then
-    echo "Erreur : Le conteneur Wazuh Manager n'a pas été trouvé."
+    echo "Erreur : Le conteneur 'Wazuh-Manager' n'a pas été trouvé."
     exit 1
 fi
 
@@ -544,7 +561,7 @@ echo "-----------------------------------------------------------"
 # 14. Intégration de Suricata avec Wazuh
 
 echo ">>> Attente du démarrage complet des conteneurs..."
-sleep 120 # Attendre 2 minutes
+sleep 30 # Attendre 30 secondes
 
 # a. Créer un groupe d'agents appelé Suricata
 echo ">>> Création du groupe d'agents 'Suricata' dans Wazuh..."
@@ -693,29 +710,46 @@ else
 
     # h. Redémarrer le service Wazuh Manager
     echo ">>> Redémarrage du service Wazuh Manager..."
-    sleep 60 # On se rassure que le conteneur est totalement libéré de tout usage !
+    sleep 15 # On se rassure que le conteneur est totalement libéré de tout usage !
 
     docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" #Méthode de redémarage 1
     # docker-compose restart wazuh.manager #Méthode de redémarage 2
     echo "...   Redémarrage en cours    ..."
-    sleep 120 # Attendre 2 minutes le temps qu'il redémarre !
+    sleep 90 # Attendre 1 minute et 30 secondes le temps qu'il redémarre !
 
     echo ">>> Wazuh Manager est de nouveau démarré..."
 
     # Vérifier à nouveau l'état des conteneurs
     echo ">>> Vérification de l'état des conteneurs Docker..."
 
-    # Réinitialiser l'indicateur d'erreur
+    # Réinitialiser l'indicateur d'erreur et le compteur de tentatives
     ERROR_FOUND=0
+    RETRY_COUNT=0
 
-    for CONTAINER_ID in $CONTAINERS; do
-        CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
-        CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
-        if [ "$CONTAINER_STATUS" != "running" ]; then
-            echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
-            ERROR_FOUND=1
+    # Boucle de vérification
+    while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
+        ERROR_FOUND=0
+        for CONTAINER_ID in $CONTAINERS; do
+            CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+            CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
+
+            if [ "$CONTAINER_STATUS" != "running" ]; then
+                echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
+                ERROR_FOUND=1
+            else
+                echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
+            fi
+        done
+
+        if [ $ERROR_FOUND -eq 1 ]; then
+            ((RETRY_COUNT++))
+            echo "Certains conteneurs ne sont pas encore démarrés."
+            echo "Tentative $RETRY_COUNT/$MAX_RETRIES . Nouvelle vérification dans $SLEEP_BETWEEN secondes..."
+            echo "||---------------------------------------------------------------------------------------||"
+            sleep $SLEEP_BETWEEN
         else
-            echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
+            echo "Tous les conteneurs sont en cours d'exécution."
+            break
         fi
     done
 
@@ -724,12 +758,10 @@ else
         echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
         exit 1
     else
-        echo "Tous les conteneurs fonctionnent correctement."
+        echo "Tous les conteneurs Ont bien démarés."
     fi
 fi
 echo ">>> Intégration de Suricata avec Wazuh terminée."
-echo ">>> Veuillez patienter quelques minutes ..."
-sleep 120 # Attendre 2 minutes le temps qu'il redémarre complétement !
 
 
 
