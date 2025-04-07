@@ -41,7 +41,7 @@ Copy-Item -Path ".\block_ip.ps1" -Destination "$activeResponsePath\$blockIpScrip
 
 Write-Host "Scripts de reponse active deployes avec succes." -ForegroundColor Green
 
-# Configurer ossec.conf
+# Configurer ossec.conf !"
 Write-Host ">>> Configuration de ossec.conf pour les reponses actives..."
 # Sauvegarder une copie de securite de ossec.conf
 Copy-Item -Path "$installPath\ossec.conf" -Destination "$installPath\ossec.conf.bak" -Force
@@ -50,13 +50,22 @@ Write-Host "Sauvegarde de ossec.conf effectuee." -ForegroundColor Green
 # Charger le contenu actuel de ossec.conf
 [xml]$ossecConfig = Get-Content "$installPath\ossec.conf"
 
+# Vérifier si <agent_config> existe, sinon le créer
+$agentConfig = $ossecConfig.ossec_config.agent_config
+if (-not $agentConfig) {
+    $agentConfig = $ossecConfig.CreateElement("agent_config")
+    $ossecConfig.ossec_config.AppendChild($agentConfig) | Out-Null
+    Write-Host "<agent_config> ajouté." -ForegroundColor Green
+}
+
 # Fonction pour ajouter un <command> si il n'existe pas
+#Maj l'ajouter dans <agent_config>
 function Add-Command($name, $executable, $timeout) {
     # Verifier si la commande existe deja
-    $existingCommand = $ossecConfig.ossec_config.command | Where-Object { $_.name -eq $name }
+    $existingCommand = $agentConfig.command | Where-Object { $_.name -eq $name }
     if (-not $existingCommand) {
         $commandElement = $ossecConfig.CreateElement("command")
-        
+
         $nameElement = $ossecConfig.CreateElement("name")
         $nameElement.InnerText = $name
         $commandElement.AppendChild($nameElement) | Out-Null
@@ -69,10 +78,10 @@ function Add-Command($name, $executable, $timeout) {
         $timeoutElement.InnerText = $timeout
         $commandElement.AppendChild($timeoutElement) | Out-Null
 
-        $ossecConfig.ossec_config.AppendChild($commandElement) | Out-Null
-        Write-Host "Commande '$name' ajoutee a ossec.conf." -ForegroundColor Green
+        $agentConfig.AppendChild($commandElement) | Out-Null
+        Write-Host "Commande '$name' ajoutee dans <agent_config>." -ForegroundColor Green
     } else {
-        Write-Host "Commande '$name' deja presente dans ossec.conf." -ForegroundColor Yellow
+        Write-Host "Commande '$name' deja presente dans <agent_config>." -ForegroundColor Yellow
     }
 }
 
@@ -81,9 +90,10 @@ Add-Command "antivirus_scan" "antivirus_scan.ps1" "600"
 Add-Command "block_ip" "block_ip.ps1" "600"
 
 # Fonction pour ajouter un <active-response> si il n'existe pas
+# MAJ : on ajoute aussi dans <agent_config> avec location 'local'
 function Add-ActiveResponse($command, $location, $rules_id, $timeout) {
     # Verifier si la reponse active existe deja
-    $existingResponse = $ossecConfig.ossec_config.'active-response' | Where-Object { $_.command -eq $command -and $_.rules_id -eq $rules_id }
+    $existingResponse = $agentConfig.'active-response' | Where-Object { $_.command -eq $command -and $_.rules_id -eq $rules_id }
     if (-not $existingResponse) {
         $activeResponseElement = $ossecConfig.CreateElement("active-response")
 
@@ -103,16 +113,16 @@ function Add-ActiveResponse($command, $location, $rules_id, $timeout) {
         $timeoutElement.InnerText = $timeout
         $activeResponseElement.AppendChild($timeoutElement) | Out-Null
 
-        $ossecConfig.ossec_config.AppendChild($activeResponseElement) | Out-Null
-        Write-Host "Reponse active pour '$command' ajoutee a ossec.conf." -ForegroundColor Green
+        $agentConfig.AppendChild($activeResponseElement) | Out-Null
+        Write-Host "Reponse active '$command' ajoutee dans <agent_config>." -ForegroundColor Green
     } else {
-        Write-Host "Reponse active pour '$command' avec rules_id '$rules_id' deja presente dans ossec.conf." -ForegroundColor Yellow
+        Write-Host "Reponse active '$command' avec rules_id '$rules_id' deja presente dans <agent_config>." -ForegroundColor Yellow
     }
 }
 
 # Ajouter les reponses actives
-Add-ActiveResponse "antivirus_scan" "all" "100002" "600" # ID de la regle pour malware
-Add-ActiveResponse "block_ip" "all" "100003" "600"        # ID de la regle pour IP suspecte
+Add-ActiveResponse "antivirus_scan" "local" "100002" "600" # ID de la regle pour malware
+Add-ActiveResponse "block_ip" "local" "100003" "600" # ID de la regle pour IP suspecte
 
 # Sauvegarder le fichier ossec.conf
 $ossecConfig.Save("$installPath\ossec.conf")
