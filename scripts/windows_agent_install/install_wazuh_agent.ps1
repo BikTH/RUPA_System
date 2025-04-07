@@ -78,19 +78,10 @@ Write-Host "Sauvegarde de ossec.conf effectuee." -ForegroundColor Green
 # Charger le contenu actuel de ossec.conf
 [xml]$ossecConfig = Get-Content "$installPath\ossec.conf"
 
-# Vérifier si <agent_config> existe, sinon le créer
-$agentConfig = $ossecConfig.ossec_config.agent_config
-if (-not $agentConfig) {
-    $agentConfig = $ossecConfig.CreateElement("agent_config")
-    $ossecConfig.ossec_config.AppendChild($agentConfig) | Out-Null
-    Write-Host "<agent_config> ajouté." -ForegroundColor Green
-}
-
 # Fonction pour ajouter un <command> si il n'existe pas
-#Maj l'ajouter dans <agent_config>
 function Add-Command($name, $executable, $timeout) {
     # Verifier si la commande existe deja
-    $existingCommand = $agentConfig.command | Where-Object { $_.name -eq $name }
+    $existingCommand = $ossecConfig.ossec_config.command | Where-Object { $_.name -eq $name }
     if (-not $existingCommand) {
         $commandElement = $ossecConfig.CreateElement("command")
 
@@ -106,22 +97,21 @@ function Add-Command($name, $executable, $timeout) {
         $timeoutElement.InnerText = $timeout
         $commandElement.AppendChild($timeoutElement) | Out-Null
 
-        $agentConfig.AppendChild($commandElement) | Out-Null
-        Write-Host "Commande '$name' ajoutee dans <agent_config>." -ForegroundColor Green
+        $ossecConfig.ossec_config.AppendChild($commandElement) | Out-Null
+        Write-Host "Commande '$name' ajoutée dans <ossec_config>." -ForegroundColor Green
     } else {
-        Write-Host "Commande '$name' deja presente dans <agent_config>." -ForegroundColor Yellow
+        Write-Host "Commande '$name' déjà présente." -ForegroundColor Yellow
     }
 }
 
-# Ajouter les commandes pour les scripts de reponse active
+# Ajouter les commandes pour les scripts de réponse active
 Add-Command "antivirus_scan" "antivirus_scan.ps1" "600"
 Add-Command "block_ip" "block_ip.ps1" "600"
 
 # Fonction pour ajouter un <active-response> si il n'existe pas
-# MAJ : on ajoute aussi dans <agent_config> avec location 'local'
 function Add-ActiveResponse($command, $location, $rules_id, $timeout) {
-    # Verifier si la reponse active existe deja
-    $existingResponse = $agentConfig.'active-response' | Where-Object { $_.command -eq $command -and $_.rules_id -eq $rules_id }
+    # Vérifier si la réponse active existe déjà
+    $existingResponse = $ossecConfig.ossec_config.'active-response' | Where-Object { $_.command -eq $command -and $_.rules_id -eq $rules_id }
     if (-not $existingResponse) {
         $activeResponseElement = $ossecConfig.CreateElement("active-response")
 
@@ -141,10 +131,10 @@ function Add-ActiveResponse($command, $location, $rules_id, $timeout) {
         $timeoutElement.InnerText = $timeout
         $activeResponseElement.AppendChild($timeoutElement) | Out-Null
 
-        $agentConfig.AppendChild($activeResponseElement) | Out-Null
-        Write-Host "Reponse active '$command' ajoutee dans <agent_config>." -ForegroundColor Green
+        $ossecConfig.ossec_config.AppendChild($activeResponseElement) | Out-Null
+        Write-Host "Réponse active '$command' ajoutée dans <ossec_config>." -ForegroundColor Green
     } else {
-        Write-Host "Reponse active '$command' avec rules_id '$rules_id' deja presente dans <agent_config>." -ForegroundColor Yellow
+        Write-Host "Réponse active '$command' avec rules_id '$rules_id' déjà présente." -ForegroundColor Yellow
     }
 }
 
