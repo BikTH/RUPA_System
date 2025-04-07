@@ -3,13 +3,18 @@ param(
     [string]$SourceIP
 )
 
-# Démarrer une analyse rapide avec Windows Defender
-Start-MpScan -ScanType QuickScan
+# Définir le chemin de journalisation
+$logFolder = "C:\ProgramData\Wazuh\logs"
+if (-not (Test-Path $logFolder)) {
+    New-Item -Path $logFolder -ItemType Directory -Force
+}
+$timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
+$logPath = "$logFolder\antivirus_scan_$timestamp.log"
 
-# Optionnel : Enregistrer les résultats de l'analyse dans un fichier journal
-$logPath = "C:\ProgramData\Wazuh\logs\antivirus_scan_$((Get-Date).ToString('yyyyMMddHHmmss')).log"
-Start-MpScan -ScanType QuickScan | Out-File -FilePath $logPath -Encoding utf8
+# Lancer une analyse antivirus avec Windows Defender et journaliser les résultats
+# Utilisation explicite de PowerShell avec bypass
+Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -Command `"Start-MpScan -ScanType QuickScan | Out-File -FilePath '$logPath' -Encoding utf8`"" -Wait
 
-# Envoyer une notification via Wazuh ou un autre mécanisme si nécessaire
-# Exemple : Ajouter une entrée dans le journal Wazuh
-Write-Output "Antivirus scan initiated due to AlertID: $AlertID from IP: $SourceIP"
+# Ajouter une trace dans le journal Wazuh
+"[$timestamp] Antivirus scan triggered by AlertID: $AlertID from IP: $SourceIP" | Out-File -FilePath $logPath -Append
+Write-Output "Antivirus scan logged in $logPath"

@@ -3,17 +3,25 @@ param(
     [string]$SourceIP
 )
 
+# Définir le chemin de journalisation
+$logFolder = "C:\ProgramData\Wazuh\logs"
+# s'il n'existe pas, le créer
+if (-not (Test-Path $logFolder)) {
+    New-Item -Path $logFolder -ItemType Directory -Force
+}
+$timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
+$logPath = "$logFolder\block_ip_$timestamp.log"
+
+
 # Vérifier que l'adresse IP est valide
 if ($SourceIP -match '^(\d{1,3}\.){3}\d{1,3}$') {
-    # Créer une nouvelle règle de pare-feu pour bloquer l'IP
-    New-NetFirewallRule -DisplayName "Block $SourceIP" -Direction Inbound -Action Block -RemoteAddress $SourceIP
-    
-    # Optionnel : Enregistrer l'action dans un fichier journal
-    $logPath = "C:\ProgramData\Wazuh\logs\block_ip_$((Get-Date).ToString('yyyyMMddHHmmss')).log"
-    "Blocked IP: $SourceIP due to AlertID: $AlertID" | Out-File -FilePath $logPath -Encoding utf8
-    
-    # Envoyer une notification via Wazuh ou un autre mécanisme si nécessaire
-    Write-Output "IP $SourceIP has been blocked due to AlertID: $AlertID"
+    # Lancer la commande pour bloquer l'IP via pare-feu Windows
+    # Utilisation explicite de PowerShell avec bypass
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -Command `"New-NetFirewallRule -DisplayName 'Block $SourceIP' -Direction Inbound -Action Block -RemoteAddress $SourceIP -Profile Any -Protocol Any`"" -Wait
+
+    # Journaliser l'action dans un fichier
+    "[$timestamp] Blocked IP: $SourceIP due to AlertID: $AlertID" | Out-File -FilePath $logPath -Encoding utf8
+    Write-Output "IP $SourceIP blocked and logged in $logPath"
 } else {
-    Write-Output "Invalid IP address provided: $SourceIP"
+    Write-Output "Adresse Ip invalide: $SourceIP"
 }
