@@ -11,17 +11,38 @@ $activeResponsePath = "$installPath\active-response"
 $antivirusScript = "antivirus_scan.ps1"
 $blockIpScript = "block_ip.ps1"
 
-# Telecharger et installer le Wazuh Agent
-Write-Host ">>> Telechargement et installation du Wazuh Agent..."
-Invoke-WebRequest -Uri $wazuhAgentInstaller -OutFile "$env:TEMP\wazuh-agent.msi"
-Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\wazuh-agent.msi`" /quiet" -Wait
+# Demander à l'utilisateur l'adresse du serveur Wazuh Manager
+do {
+    $WazuhManager = Read-Host "Entrez l'adresse du serveur Wazuh (IP ou FQDN)"
 
-# Verifier l'installation
+    $ipRegex = '^(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?:\.|$)){4}$'
+    $fqdnRegex = '^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$'
+
+    $valid = ($WazuhManager -match $ipRegex) -or ($WazuhManager -match $fqdnRegex)
+
+    if (-not $valid) {
+        Write-Host "Adresse invalide. Veuillez entrer une adresse IP ou un FQDN valide." -ForegroundColor Yellow
+    }
+} while (-not $valid)
+
+# Définir automatiquement le nom de l'agent et les groupes
+$WazuhAgentName = $env:COMPUTERNAME
+$WazuhAgentGroup = "default,windows"
+
+# Télécharger et installer le Wazuh Agent avec les paramètres
+Write-Host ">>> Téléchargement et installation du Wazuh Agent..."
+$msiPath = "$env:TEMP\wazuh-agent.msi"
+Invoke-WebRequest -Uri $wazuhAgentInstaller -OutFile $msiPath
+
+Start-Process msiexec.exe -ArgumentList "/i `"$msiPath`" /q WAZUH_MANAGER=`"$WazuhManager`" WAZUH_AGENT_GROUP=`"$WazuhAgentGroup`" WAZUH_AGENT_NAME=`"$WazuhAgentName`"" -Wait
+
+
+# Vérifier l'installation
 if (-Not (Test-Path $installPath)) {
-    Write-Host "Erreur : L'installation du Wazuh Agent a echoue." -ForegroundColor Red
+    Write-Host "Erreur : L'installation du Wazuh Agent a échoué." -ForegroundColor Red
     exit
 } else {
-    Write-Host "Wazuh Agent installe avec succes." -ForegroundColor Green
+    Write-Host "Wazuh Agent installé avec succès." -ForegroundColor Green
 }
 
 # Creer le repertoire des reponses actives si il n'existe pas

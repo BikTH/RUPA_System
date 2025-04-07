@@ -572,6 +572,14 @@ if [ $? -ne 0 ]; then
     #exit 1
 fi
 
+#On crée en plus un groupe windows pour les agents windows
+echo ">>> Création du groupe d'agents 'windows' dans Wazuh..."
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g windows -q
+if [ $? -ne 0 ]; then
+    echo "Erreur : Impossible de créer le groupe d'agents 'windows'."
+    #exit 1
+fi
+
 # b. Récupérer l'ID de l'agent Suricata
 echo ">>> Récupération de l'ID de l'agent Suricata..."
 
