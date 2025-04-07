@@ -4,7 +4,7 @@ param(
 )
 
 # Définir le chemin de journalisation
-$logFolder = "C:\ProgramData\Wazuh\logs"
+$logFolder = "C:\Program Files (x86)\ossec-agent\logs"
 # s'il n'existe pas, le créer
 if (-not (Test-Path $logFolder)) {
     New-Item -Path $logFolder -ItemType Directory -Force
