@@ -26,7 +26,14 @@ do {
 } while (-not $valid)
 
 # Définir automatiquement le nom de l'agent et les groupes
-$WazuhAgentName = $env:COMPUTERNAME
+$ComputerName = $env:COMPUTERNAME
+$SerialNumber = (Get-WmiObject Win32_BIOS).SerialNumber.Trim()
+if (-not $SerialNumber) {
+    $SerialNumber = "UnknownSerialNumber"
+    Write-Host "Aucun numéro de série trouvé. Utilisation de 'UnknownSerialNumber'." -ForegroundColor Yellow
+}
+
+$WazuhAgentName = "$ComputerName-$SerialNumber"
 $WazuhAgentGroup = "default,windows"
 
 # Télécharger et installer le Wazuh Agent avec les paramètres
