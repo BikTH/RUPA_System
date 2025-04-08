@@ -182,12 +182,41 @@ echo ">>> Génération des certificats SSL pour le portail RUPA..."
 
 # Récupération des informations auprés de l'utilisateur
 read -r -p "Pays (2 lettres) [ex: CM, FR, BE] : " SSL_COUNTRY
+while [[ ! "$SSL_COUNTRY" =~ ^[A-Z]{2}$ ]]; do
+    echo "Code pays invalide. Utilise 2 lettres majuscules (ex: FR, CM)."
+    read -r -p "Pays (2 lettres) [ex: CM, FR, BE] : " SSL_COUNTRY
+done
 read -r -p "État ou Région : " SSL_STATE
+while [[ -z "$SSL_STATE" || ! "$SSL_STATE" =~ ^[[:alpha:][:space:]-]+$ ]]; do
+    echo "Nom d'état/région invalide. Utilise uniquement des lettres, espaces ou tirets."
+    read -r -p "État ou Région : " SSL_STATE
+done
 read -r -p "Ville : " SSL_CITY
+while [[ -z "$SSL_CITY" || ! "$SSL_CITY" =~ ^[[:alpha:][:space:]-]+$ ]]; do
+    echo "Nom de ville invalide. Utilise uniquement des lettres, espaces ou tirets."
+    read -r -p "Ville : " SSL_CITY
+done
 read -r -p "Nom de l'organisation : " SSL_ORG
+while [[ -z "$SSL_ORG" ]]; do
+    echo "L'organisation ne peut pas être vide."
+    read -r -p "Nom de l'organisation : " SSL_ORG
+done
 read -r -p "Nom de l'unité organisationnelle : " SSL_ORG_UNIT
+while [[ -z "$SSL_ORG_UNIT" ]]; do
+    echo "L'unité organisationnelle ne peut pas être vide."
+    read -r -p "Nom de l'unité organisationnelle : " SSL_ORG_UNIT
+done
 read -r -p "Nom commun (CN) [ex: domaine ou hostname] : " SSL_CN
+# read -r -p "Nom commun (CN) [ex: domaine ou hostname] : " SSL_CN
+# while [[ ! "$SSL_CN" =~ ^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$ ]]; do
+#     echo "Nom commun invalide. Fournis un nom de domaine (ex: portail.rupa.local)."
+#     read -r -p "Nom commun (CN) [ex: domaine ou hostname] : " SSL_CN
+# done
 read -r -p "Adresse e-mail du contact : " SSL_EMAIL
+while [[ ! "$SSL_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; do
+    echo "Adresse e-mail invalide. (ex: contact@exemple.com)"
+    read -r -p "Adresse e-mail du contact : " SSL_EMAIL
+done
 
 # Conserver ces valeurs pour les réutiliser si besoin dans le post_install
 GLOBAL_VARS["SSL_COUNTRY"]=$SSL_COUNTRY
