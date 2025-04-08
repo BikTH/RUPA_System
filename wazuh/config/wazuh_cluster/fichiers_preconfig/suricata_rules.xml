@@ -1,0 +1,23 @@
+<group name="RUPA_System Suricata_custom_ar_rules,">
+  <rule id="100200" level="12">
+    <if_sid>86600</if_sid>
+    <field name="event_type">^alert$</field>
+    <match>ET DOS Inbound GoldenEye DoS attack</match>
+    <description>GoldenEye DoS attack a été détecté </description>
+    <mitre><id>T1498</id></mitre>
+  </rule>
+  <rule id="100201" level="12">
+    <if_sid>86600</if_sid>
+    <field name="event_type">^alert$</field>
+    <match>ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine)</match>
+    <description>Scan Nmap scripting détecté </description>
+    <mitre><id>T1595</id></mitre>
+  </rule>
+  <rule id="100203" level="12">
+    <if_sid>86600</if_sid>
+    <field name="event_type">^alert$</field>
+    <match>ET TROJAN Possible RAT Command and Control</match>
+    <description>Suspicion de Trojan/RAT Command & Control.</description>
+    <mitre><id>T1219</id></mitre>
+  </rule>
+</group>
