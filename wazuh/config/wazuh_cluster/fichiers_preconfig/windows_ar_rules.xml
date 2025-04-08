@@ -34,7 +34,6 @@
     <mitre>
       <id>T1110</id>
     </mitre>
-    <nist_800_53>AC-7</nist_800_53>
   </rule>
 
   <!--
@@ -48,7 +47,6 @@
     <mitre>
       <id>T1110</id>
     </mitre>
-    <nist_800_53>AC-7</nist_800_53>
   </rule>
 
   <!--
@@ -63,7 +61,6 @@
     <mitre>
       <id>T1595</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
   <!--
@@ -78,7 +75,6 @@
     <mitre>
       <id>T1595</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
   <!--
@@ -102,7 +98,6 @@
     <mitre>
       <id>T1110</id>
     </mitre>
-    <nist_800_53>AC-7</nist_800_53>
   </rule>
 
   <!--
@@ -123,7 +118,6 @@
     <mitre>
       <id>T1059</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
   <!--
@@ -138,7 +132,6 @@
     <mitre>
       <id>T1059</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
   <!--
@@ -153,7 +146,6 @@
     <mitre>
       <id>T1486</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
   <!--
@@ -168,7 +160,6 @@
     <mitre>
       <id>T1137</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
   <!--
@@ -183,7 +174,6 @@
     <mitre>
       <id>T1204</id>
     </mitre>
-    <nist_800_53>SI-4</nist_800_53>
   </rule>
 
 </group>

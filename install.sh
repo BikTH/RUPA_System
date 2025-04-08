@@ -656,7 +656,6 @@ else
         <mitre>
         <id>T1498</id> <!-- Network Denial of Service -->
         </mitre>
-        <nist_800_53>SI-4</nist_800_53> <!--détection d incidents -->
     </rule>
     <rule id="100201" level="12">
         <if_sid>86600</if_sid>
@@ -666,7 +665,6 @@ else
         <mitre>
         <id>T1595</id> <!-- Active Scanning -->
         </mitre>
-        <nist_800_53>SI-4</nist_800_53>
     </rule>
     <rule id="100203" level="12">
         <if_sid>86600</if_sid>
@@ -676,7 +674,6 @@ else
         <mitre>
             <id>T1219</id> <!-- Remote Access Tools -->
         </mitre>
-        <nist_800_53>SI-4</nist_800_53>
     </rule>
     </group>'
 
