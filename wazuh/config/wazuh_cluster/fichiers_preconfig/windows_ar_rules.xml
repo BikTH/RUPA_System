@@ -90,11 +90,6 @@
   <rule id="100014" level="12">
     <field name="win.system.eventID">4625</field>
     <description>Échecs de connexion Windows répétés (RUPA Sytem Custom Rules)</description>
-    <options>
-      <frequency>4</frequency>
-      <timeframe>60</timeframe>
-      <same_source_ip/>
-    </options>
     <mitre>
       <id>T1110</id>
     </mitre>
