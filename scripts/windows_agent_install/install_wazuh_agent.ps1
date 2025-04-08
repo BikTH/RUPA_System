@@ -139,8 +139,8 @@ function Add-ActiveResponse($command, $location, $rules_id, $timeout) {
 }
 
 # Ajouter les reponses actives
-Add-ActiveResponse "antivirus_scan" "local" "100002" "600" # ID de la regle pour malware
-Add-ActiveResponse "block_ip" "local" "100003" "600" # ID de la regle pour IP suspecte
+Add-ActiveResponse "block_ip" "local" "100010,100011,100012,100013,100014" "600" # ID de la regle pour malware
+Add-ActiveResponse "antivirus_scan" "local" "100020,100021,100022,100023,100024" "600" # ID de la regle pour IP suspecte
 
 # Sauvegarder le fichier ossec.conf
 $ossecConfig.Save("$installPath\ossec.conf")

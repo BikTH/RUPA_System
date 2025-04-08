@@ -572,14 +572,6 @@ if [ $? -ne 0 ]; then
     #exit 1
 fi
 
-#On crée en plus un groupe windows pour les agents windows
-echo ">>> Création du groupe d'agents 'windows' dans Wazuh..."
-docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g windows -q
-if [ $? -ne 0 ]; then
-    echo "Erreur : Impossible de créer le groupe d'agents 'windows'."
-    #exit 1
-fi
-
 # b. Récupérer l'ID de l'agent Suricata
 echo ">>> Récupération de l'ID de l'agent Suricata..."
 
@@ -655,7 +647,7 @@ else
     # f. Ajouter les règles personnalisées pour Suricata
     echo ">>> Ajout des règles personnalisées pour Suricata..."
 
-    LOCAL_RULES_CONTENT='<group name="custom_active_response_rules,">
+    LOCAL_RULES_CONTENT='<group name="RUPA_System_Suricata_custom_ar_rules,">
     <rule id="100200" level="12">
         <if_sid>86600</if_sid>
         <field name="event_type">^alert$</field>
@@ -716,60 +708,94 @@ else
     # docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" sed -i "/<\/active-response>/i \  $ACTIVE_RESPONSE_BLOCK" /var/ossec/etc/ossec.conf
     #Pas nécessaire pour le moment ! RUPA
 
-    # h. Redémarrer le service Wazuh Manager
-    echo ">>> Redémarrage du service Wazuh Manager..."
-    sleep 15 # On se rassure que le conteneur est totalement libéré de tout usage !
+    echo ">>> Intégration de Suricata avec Wazuh terminée."
 
-    docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" #Méthode de redémarage 1
-    # docker-compose restart wazuh.manager #Méthode de redémarage 2
-    echo "...   Redémarrage en cours    ..."
-    sleep 90 # Attendre 1 minute et 30 secondes le temps qu'il redémarre !
+fi
 
-    echo ">>> Wazuh Manager est de nouveau démarré..."
 
-    # Vérifier à nouveau l'état des conteneurs
-    echo ">>> Vérification de l'état des conteneurs Docker..."
+echo "-----------------------------------------------------------"
+echo " CONFIGURATIONDE L'ACTIVE RESPONSE POUR TERMINAUX WINDOWS  "
+echo "-----------------------------------------------------------"
 
-    # Réinitialiser l'indicateur d'erreur et le compteur de tentatives
+# 15. Préconfiguration d'active response pour terminaux windows
+
+# On crée un groupe windows pour les agents windows
+echo ">>> Création du groupe d'agents 'windows' dans Wazuh..."
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/agent_groups -a -g windows -q
+if [ $? -ne 0 ]; then
+    echo "Erreur : Impossible de créer le groupe d'agents 'windows'."
+    #exit 1
+fi
+
+# Déployer les règles custom (ex: 100010..100014 pour block_ip, 100020..100024 pour antivirus_scan)
+echo ">>> Copie de windows_ar_rules.xml dans Wazuh manager..."
+docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/windows_ar_rules.xml \
+"${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/tmp/windows_ar_rules.xml
+
+echo ">>> Ajout des règles dans local_rules.xml"
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" bash -c \
+"cat /tmp/windows_ar_rules.xml >> /var/ossec/etc/rules/local_rules.xml"
+
+# Déployer le snippet (commands + active-response) pour le groupe windows
+echo ">>> Copie de windows_ar_snippet.xml dans Wazuh manager..."
+docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/windows_ar_snippet.xml \
+"${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/windows/agent.conf
+
+
+#Redémarrer le service Wazuh Manager
+echo ">>> Redémarrage du service Wazuh Manager..."
+sleep 15 # On se rassure que le conteneur est totalement libéré de tout usage !
+
+docker restart "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" #Méthode de redémarage 1
+# docker-compose restart wazuh.manager #Méthode de redémarage 2
+echo "...   Redémarrage en cours    ..."
+sleep 90 # Attendre 1 minute et 30 secondes le temps qu'il redémarre !
+
+echo ">>> Wazuh Manager est de nouveau démarré..."
+
+# Vérifier à nouveau l'état des conteneurs
+echo ">>> Vérification de l'état des conteneurs Docker..."
+
+# Réinitialiser l'indicateur d'erreur et le compteur de tentatives
+ERROR_FOUND=0
+RETRY_COUNT=0
+
+# Boucle de vérification
+while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
     ERROR_FOUND=0
-    RETRY_COUNT=0
+    for CONTAINER_ID in $CONTAINERS; do
+        CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+        CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
 
-    # Boucle de vérification
-    while [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; do
-        ERROR_FOUND=0
-        for CONTAINER_ID in $CONTAINERS; do
-            CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
-            CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_ID")
-
-            if [ "$CONTAINER_STATUS" != "running" ]; then
-                echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
-                ERROR_FOUND=1
-            else
-                echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
-            fi
-        done
-
-        if [ $ERROR_FOUND -eq 1 ]; then
-            ((RETRY_COUNT++))
-            echo "Certains conteneurs ne sont pas encore démarrés."
-            echo "Tentative $RETRY_COUNT/$MAX_RETRIES . Nouvelle vérification dans $SLEEP_BETWEEN secondes..."
-            echo "||---------------------------------------------------------------------------------------||"
-            sleep $SLEEP_BETWEEN
+        if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Le conteneur $CONTAINER_NAME n'est pas en cours d'exécution (état : $CONTAINER_STATUS)."
+            ERROR_FOUND=1
         else
-            echo "Tous les conteneurs sont en cours d'exécution."
-            break
+            echo "Le conteneur $CONTAINER_NAME est en cours d'exécution."
         fi
     done
 
     if [ $ERROR_FOUND -eq 1 ]; then
-        echo "Erreur : Un ou plusieurs conteneurs ne fonctionnent pas correctement."
-        echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
-        exit 1
+        ((RETRY_COUNT++))
+        echo "Certains conteneurs ne sont pas encore démarrés."
+        echo "Tentative $RETRY_COUNT/$MAX_RETRIES . Nouvelle vérification dans $SLEEP_BETWEEN secondes..."
+        echo "||---------------------------------------------------------------------------------------||"
+        sleep $SLEEP_BETWEEN
     else
-        echo "Tous les conteneurs Ont bien démarés."
+        echo "Tous les conteneurs sont en cours d'exécution."
+        break
     fi
+done
+
+if [ $ERROR_FOUND -eq 1 ]; then
+    echo "Erreur : Un ou plusieurs conteneurs ne fonctionnent pas correctement."
+    echo "Veuillez vérifier les logs des conteneurs avec 'docker-compose logs' pour plus d'informations."
+    exit 1
+else
+    echo "Tous les conteneurs Ont bien démarés."
 fi
-echo ">>> Intégration de Suricata avec Wazuh terminée."
+
+
 
 
 
@@ -777,7 +803,7 @@ echo "-----------------------------------------------------------"
 echo "           CONFIGURATION POST - DÉPLOIEMENT               "
 echo "-----------------------------------------------------------"
 
-# 14. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
+# 16. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
 
 read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
 

@@ -1,0 +1,189 @@
+<!--
+  Fichier : windows_ar_rules.xml
+  Objectif : Créer des règles personnalisées pour Active Response (block_ip.ps1 et antivirus_scan.ps1)
+  Auteur   : RUPA System
+  Date     : 2025-04-08
+
+  Description générale :
+  ======================
+  - Les règles 100010 à 100014 déclenchent le script block_ip.ps1
+  - Les règles 100020 à 100024 déclenchent le script antivirus_scan.ps1
+  - On utilise <match> ou <field> pour cibler le contenu des logs Windows.
+  - On ajoute une balise <mitre> pour mapper la détection à la technique MITRE ATT&CK.
+  - On ajoute une balise <nist_800_53> pour référencer NIST SP 800-53.
+  - Les descriptions sont rédigées en français et se terminent par "(RUPA Sytem Custom Rules)".
+-->
+
+<group name="RUPA System windows_custom_ar_rules">
+
+  <!--
+    ================================
+    1) RÈGLES POUR block_ip.ps1
+    ================================
+  -->
+
+  <!--
+    Règle 100010 : Brute Force RDP
+    - On recherche simplement la chaîne "Brute Force RDP" dans le log
+    - MITRE T1110 = Technique de bruteforce sur les identifiants
+    - NIST 800-53 (AC-7) = Contrôle sur les tentatives de connexion et verrouillage de compte
+  -->
+  <rule id="100010" level="12">
+    <match>Brute Force RDP</match>
+    <description>Brute force RDP détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <nist_800_53>AC-7</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100011 : Brute Force SSH
+    - Même logique que la précédente, mais cette fois pour "Brute Force SSH"
+    - MITRE T1110 et NIST AC-7
+  -->
+  <rule id="100011" level="12">
+    <match>Brute Force SSH</match>
+    <description>Brute force SSH détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <nist_800_53>AC-7</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100012 : Détection de Scan Web malveillant
+    - "Malicious Web Scanning" peut être un pattern qu'on retrouve dans les journaux
+    - MITRE T1595 = Reconnaissance active (Scanning)
+    - NIST 800-53 (SI-4) = Systèmes d'information, détection et protection contre les menaces
+  -->
+  <rule id="100012" level="12">
+    <match>Malicious Web Scanning</match>
+    <description>Scan web malveillant détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1595</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100013 : Détection de Scan de ports depuis une IP externe
+    - "Port Scanning from external IP" comme mot-clé
+    - MITRE T1595 = Reconnaissance (scan)
+    - NIST 800-53 (SI-4) + = Systèmes d'information, détection et protection contre les menaces
+  -->
+  <rule id="100013" level="12">
+    <match>Port Scanning from external IP</match>
+    <description>Scan de ports depuis une IP externe détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1595</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100014 : Échecs de connexion Windows répétés
+    - Ici, on utilise <field> pour cibler l'EventID "4625" (échec de connexion sur Windows).
+    - On ajoute <options> pour exiger plusieurs occurrences dans un laps de temps
+      + frequency=4 (au moins 4 occurrences)
+      + timeframe=60 (en 60 secondes)
+      + same_source_ip (même IP source)
+    - MITRE T1110 pour bruteforce
+    - NIST 800-53 (AC-7)
+  -->
+  <rule id="100014" level="12">
+    <field name="win.system.eventID">4625</field>
+    <description>Échecs de connexion Windows répétés (RUPA Sytem Custom Rules)</description>
+    <options>
+      <frequency>4</frequency>
+      <timeframe>60</timeframe>
+      <same_source_ip/>
+    </options>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <nist_800_53>AC-7</nist_800_53>
+  </rule>
+
+  <!--
+    ================================
+    2) RÈGLES POUR antivirus_scan.ps1
+    ================================
+  -->
+
+  <!--
+    Règle 100020 : Création de processus suspecte (lancement d'AV scan)
+    - On recherche "Suspicious process creation" dans le log
+    - MITRE T1059 (Execution)
+    - NIST 800-53 (SI-4)
+  -->
+  <rule id="100020" level="12">
+    <match>Suspicious process creation</match>
+    <description>Processus suspect détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1059</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100021 : Fichier malveillant détecté par l'AV
+    - "Malware file detected" dans les logs
+    - MITRE T1059 (exemples de scripts malveillants)
+    - NIST 800-53 (SI-4)
+  -->
+  <rule id="100021" level="12">
+    <match>Malware file detected</match>
+    <description>Fichier malveillant détecté par l'antivirus (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1059</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100022 : Comportement apparent de ransomware
+    - "Ransomware-like behavior" dans les logs
+    - MITRE T1486 (Data Encrypted for Impact)
+    - NIST 800-53 (SI-4)
+  -->
+  <rule id="100022" level="12">
+    <match>Ransomware-like behavior</match>
+    <description>Comportement de ransomware détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100023 : Macro Office malveillante
+    - "Malicious Office Macro" dans les logs
+    - MITRE T1137 (Office Application Startup)
+    - NIST 800-53 (SI-4)
+  -->
+  <rule id="100023" level="12">
+    <match>Malicious Office Macro</match>
+    <description>Macro Office malveillante détectée (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1137</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+  <!--
+    Règle 100024 : Détection d'un Cheval de Troie distant
+    - "Remote Trojan detection" dans les logs
+    - MITRE T1204 (User Execution)
+    - NIST 800-53 (SI-4)
+  -->
+  <rule id="100024" level="12">
+    <match>Remote Trojan detection</match>
+    <description>Cheval de Troie distant détecté (RUPA Sytem Custom Rules)</description>
+    <mitre>
+      <id>T1204</id>
+    </mitre>
+    <nist_800_53>SI-4</nist_800_53>
+  </rule>
+
+</group>
