@@ -38,6 +38,9 @@ services:
       - wazuh_active_response:/var/ossec/active-response/bin
       - wazuh_agentless:/var/ossec/agentless
       - wazuh_wodles:/var/ossec/wodles
+      - wazuh_shared:/var/ossec/etc/shared/
+      - wazuh_decoders:/var/ossec/etc/decoders/
+      - wazuh_rules:/var/ossec/etc/rules/
       - filebeat_etc:/etc/filebeat
       - filebeat_var:/var/lib/filebeat
       - ./wazuh/config/wazuh_indexer_ssl_certs/root-ca-manager.pem:/etc/ssl/root-ca.pem
@@ -241,6 +244,8 @@ volumes:
   wazuh_active_response:
   wazuh_agentless:
   wazuh_wodles:
+  wazuh_shared:
+  wazuh_decoders:
   filebeat_etc:
   filebeat_var:
   wazuh-indexer-data:
