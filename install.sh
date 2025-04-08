@@ -652,19 +652,31 @@ else
         <if_sid>86600</if_sid>
         <field name="event_type">^alert$</field>
         <match>ET DOS Inbound GoldenEye DoS attack</match>
-        <description>GoldenEye DoS attack has been detected. </description>
+        <description>GoldenEye DoS attack a été détecté </description>
         <mitre>
-        <id>T1498</id>
+        <id>T1498</id> <!-- Network Denial of Service -->
         </mitre>
+        <nist_800_53>SI-4</nist_800_53> <!--détection d incidents -->
     </rule>
     <rule id="100201" level="12">
         <if_sid>86600</if_sid>
         <field name="event_type">^alert$</field>
         <match>ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine)</match>
-        <description>Nmap scripting engine detected. </description>
+        <description>Scan Nmap scripting détecté </description>
         <mitre>
-        <id>T1595</id>
+        <id>T1595</id> <!-- Active Scanning -->
         </mitre>
+        <nist_800_53>SI-4</nist_800_53>
+    </rule>
+    <rule id="100203" level="12">
+        <if_sid>86600</if_sid>
+        <field name="event_type">^alert$</field>
+        <match>ET TROJAN Possible RAT Command and Control</match>
+        <description>Suspicion de Trojan/RAT Command & Control.</description>
+        <mitre>
+            <id>T1219</id> <!-- Remote Access Tools -->
+        </mitre>
+        <nist_800_53>SI-4</nist_800_53>
     </rule>
     </group>'
 
