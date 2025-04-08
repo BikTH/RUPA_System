@@ -1,1 +1,1 @@
-alert icmp any any -> $HOME_NET any (msg:"THIS IS AN ICMP Ping"; sid:1; rev:1;)
+alert icmp any any -> $HOME_NET any (msg:"Ceci est un ping"; sid:1; rev:1;)
