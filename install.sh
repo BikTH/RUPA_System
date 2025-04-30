@@ -630,90 +630,23 @@ else
     fi
 
     # d. Ajouter la configuration partagée pour le groupe Suricata
-    echo ">>> Configuration du fichier agent.conf pour le groupe 'Suricata'..."
-
-    AGENT_CONF_CONTENT='<agent_config>
-    <localfile>
-        <log_format>json</log_format>
-        <location>/var/log/suricata/eve.json</location>
-    </localfile>
-    </agent_config>'
-
-    # Créer le fichier agent.conf localement
-    echo "$AGENT_CONF_CONTENT" > agent.conf
-
+    echo ">>> Déploiement de la configuration agent.conf pour Suricata..."
     # Copier le fichier dans le conteneur
-    docker cp agent.conf "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/Suricata/agent.conf
-
-    # Supprimer le fichier local
-    rm agent.conf
+    docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/suricata_agent.conf \
+    "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/Suricata/agent.conf
 
     # e. Ajouter les décoders personnalisés pour Suricata
-    echo ">>> Ajout des décoders personnalisés pour Suricata..."
-
-    LOCAL_DECODER_CONTENT='<decoder name="json">
-    <prematch>^{\s*"</prematch>
-    </decoder>
-    <decoder name="json_child">
-    <parent>json</parent>
-    <regex type="pcre2">"src_ip":"([^"]+)"</regex>
-    <order>srcip</order>
-    </decoder>
-    <decoder name="json_child">
-    <parent>json</parent>
-    <plugin_decoder>JSON_Decoder</plugin_decoder>
-    </decoder>'
-
-    # Créer le fichier local_decoder.xml localement
-    echo "$LOCAL_DECODER_CONTENT" > local_decoder.xml
-
+    echo ">>> Déploiement des décoders personnalisés pour Suricata..."
     # Copier le fichier dans le conteneur
-    docker cp local_decoder.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/decoders/local_decoder.xml
-
-    # Supprimer le fichier local
-    rm local_decoder.xml
+    docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/suricata_decoder.xml \
+    "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/decoders/local_decoder.xml
 
     # f. Ajouter les règles personnalisées pour Suricata
-    echo ">>> Ajout des règles personnalisées pour Suricata..."
-
-    LOCAL_RULES_CONTENT='<group name="RUPA_System_Suricata_custom_ar_rules,">
-    <rule id="100200" level="12">
-        <if_sid>86600</if_sid>
-        <field name="event_type">^alert$</field>
-        <match>ET DOS Inbound GoldenEye DoS attack</match>
-        <description>GoldenEye DoS attack a été détecté </description>
-        <mitre>
-        <id>T1498</id> <!-- Network Denial of Service -->
-        </mitre>
-    </rule>
-    <rule id="100201" level="12">
-        <if_sid>86600</if_sid>
-        <field name="event_type">^alert$</field>
-        <match>ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine)</match>
-        <description>Scan Nmap scripting détecté </description>
-        <mitre>
-        <id>T1595</id> <!-- Active Scanning -->
-        </mitre>
-    </rule>
-    <rule id="100203" level="12">
-        <if_sid>86600</if_sid>
-        <field name="event_type">^alert$</field>
-        <match>ET TROJAN Possible RAT Command and Control</match>
-        <description>Suspicion de Trojan/RAT Command & Control.</description>
-        <mitre>
-            <id>T1219</id> <!-- Remote Access Tools -->
-        </mitre>
-    </rule>
-    </group>'
-
-    # Créer le fichier local_rules.xml localement
-    echo "$LOCAL_RULES_CONTENT" > local_rules.xml
-
-    # Copier le fichier dans le conteneur
-    docker cp local_rules.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/rules/local_rules.xml
-
-    # Supprimer le fichier local
-    rm local_rules.xml
+    echo ">>> Déploiement des règles personnalisées Suricata dans local_rules.xml..."
+    docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/suricata_rules.xml \
+    "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/tmp/suricata_rules.xml
+    docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" bash -c \
+    "cat /tmp/suricata_rules.xml >> /var/ossec/etc/rules/local_rules.xml"
 
     # # g. Configuration de l'active response
     # echo ">>> Configuration de l'active response dans Wazuh..."
@@ -779,6 +712,41 @@ echo ">>> Copie de windows_ar_snippet.xml dans Wazuh manager..."
 docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/windows_ar_snippet.xml \
 "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/etc/shared/windows/agent.conf
 
+echo ">>> Configuration de l'active response pour terminaux Windows terminée"
+
+
+echo "-----------------------------------------------------------"
+echo "             INTEGRATION WAZUH <-> N8N                     "
+echo "-----------------------------------------------------------"
+
+# 16. Préconfiguration d'active response pour terminaux windows
+
+# a. Création utilisateur API n8n
+echo ">>> Vérification de l'utilisateur n8n..."
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_users -l | grep -q "n8n"
+if [ $? -ne 0 ]; then
+    echo ">>> Création de l'utilisateur n8n dans la Wazuh API..."
+    docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_users -a n8n -r administrator -p "n8np@ss@pi"
+else
+    echo ">>> Utilisateur n8n déjà existant."
+fi
+
+# b. Copie du script d'intégration webhook
+echo ">>> Copie du script n8n_webhook.sh dans Wazuh..."
+docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/n8n_webhook.sh "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/integrations/n8n_webhook.sh
+
+echo ">>> Rendre le script exécutable..."
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" chmod +x /var/ossec/integrations/n8n_webhook.sh
+
+# c. Insertion du bloc d'intégration
+echo ">>> Copie de n8n_integration_snippet.xml dans Wazuh..."
+docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/n8n_integration_snippet.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/tmp/n8n_integration_snippet.xml
+
+echo ">>> Insertion dans ossec.conf..."
+docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" bash -c "sed -i '/<\/ossec_config>/e cat /tmp/n8n_integration_snippet.xml' /var/ossec/etc/ossec.conf"
+
+echo ">>> Intégration Wazuh <-> N8N terminée avec succès."
+
 
 #Redémarrer le service Wazuh Manager
 echo ">>> Redémarrage du service Wazuh Manager..."
@@ -841,7 +809,7 @@ echo "-----------------------------------------------------------"
 echo "           CONFIGURATION POST - DÉPLOIEMENT               "
 echo "-----------------------------------------------------------"
 
-# 16. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
+# 17. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
 
 read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
 

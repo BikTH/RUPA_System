@@ -1,0 +1,6 @@
+<integration>
+    <name>n8n_webhook_integration</name>
+    <alert_format>json</alert_format>
+    <retries>3</retries>
+    <command>/var/ossec/integrations/n8n_webhook.sh</command>
+</integration>
