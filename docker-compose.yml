@@ -134,6 +134,7 @@ services:
       - data_wazuh-suricata_rules-update:/var/lib/suricata
       - ./wazuh/config/wazuh_suricata:/etc/suricata
       - ./wazuh/config/wazuh_suricata/rules/local.rules:/var/lib/suricata/rules/local.rules
+    command: /bin/bash -c "/var/ossec/bin/wazuh-control start && tail -f /dev/null"
     depends_on:
       - wazuh.dashboard
 
