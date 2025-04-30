@@ -719,7 +719,7 @@ echo "-----------------------------------------------------------"
 echo "             INTEGRATION WAZUH <-> N8N                     "
 echo "-----------------------------------------------------------"
 
-# 16. Préconfiguration d'active response pour terminaux windows
+# 16. Intégration de wazuh dans N8N
 
 # a. Création utilisateur API n8n
 echo ">>> Vérification de l'utilisateur n8n..."
