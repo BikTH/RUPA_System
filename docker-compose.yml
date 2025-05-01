@@ -254,6 +254,7 @@ volumes:
   wazuh-dashboard-custom:
   data_wazuh-suricata_logs:
   data_wazuh-suricata_rules-update:
+  wazuh_rules:
   ###VOLUMES SURICATA + ELK + EVEBOX
   evebox-data:
   data_e_data_elasticsearch:
