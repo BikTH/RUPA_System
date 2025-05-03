@@ -52,6 +52,45 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# CONST
+RUPA_STATE_DIR="/var/lib/rupa"
+RUPA_ENV_FILE="${RUPA_STATE_DIR}/.env"
+DEPLOYED_FLAG="RUPA_DEPLOYED"
+chmod +x post_install.sh #rendre lescript post_install.sh exécutable
+
+# -----------------------------------------------------------------------------
+# 0.  PERSISTANCE PREMIER OU SECOND LANCEMENT
+# -----------------------------------------------------------------------------
+if [ ! -d "$RUPA_STATE_DIR" ]; then
+    echo ">>> Premier lancement : création de ${RUPA_STATE_DIR}"
+    mkdir -p "$RUPA_STATE_DIR"
+    touch "$RUPA_ENV_FILE"
+    echo "${DEPLOYED_FLAG}=false"   >> "$RUPA_ENV_FILE"
+    echo "DEPLOY_DATE=$(date +%F)" >> "$RUPA_ENV_FILE"
+else
+    # charger les anciennes variables
+    set -a
+    # shellcheck source=/dev/null #Correction auto
+    source "$RUPA_ENV_FILE"
+    set +a
+
+    if [ "${RUPA_DEPLOYED}" == "true" ]; then
+        echo "-----------------------------------------------------------"
+        echo "  RUPA System déjà installé le ${DEPLOY_DATE}"
+        echo "-----------------------------------------------------------"
+
+        # Vérifier si les conteneurs de la stack sont en cours d'exécution
+        if docker compose ps -q | xargs docker inspect --format '{{.State.Status}}' | grep -vq running; then
+            echo ">>> Stack non active : redémarrage..."
+            docker compose up -d
+        else
+            echo ">>> Stack déjà active. Pense à exécuter post_install.sh si besoin."
+            exit 0
+        fi
+    fi
+fi
+# -----------------------------------------------------------------------------
+
 # 2. Mise à jour du système
 echo ">>> Mise à jour du système..."
 
@@ -715,39 +754,6 @@ docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/windows_ar_snippet.xml
 echo ">>> Configuration de l'active response pour terminaux Windows terminée"
 
 
-echo "-----------------------------------------------------------"
-echo "             INTEGRATION WAZUH <-> N8N                     "
-echo "-----------------------------------------------------------"
-
-# 16. Intégration de wazuh dans N8N
-
-# a. Création utilisateur API n8n
-echo ">>> Vérification de l'utilisateur n8n..."
-docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_users -l | grep -q "n8n"
-if [ $? -ne 0 ]; then
-    echo ">>> Création de l'utilisateur n8n dans la Wazuh API..."
-    docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" /var/ossec/bin/manage_users -a n8n -r administrator -p "n8np@ss@pi"
-else
-    echo ">>> Utilisateur n8n déjà existant."
-fi
-
-# b. Copie du script d'intégration webhook
-echo ">>> Copie du script n8n_webhook.sh dans Wazuh..."
-docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/n8n_webhook.sh "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/var/ossec/integrations/n8n_webhook.sh
-
-echo ">>> Rendre le script exécutable..."
-docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" chmod +x /var/ossec/integrations/n8n_webhook.sh
-
-# c. Insertion du bloc d'intégration
-echo ">>> Copie de n8n_integration_snippet.xml dans Wazuh..."
-docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/n8n_integration_snippet.xml "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}":/tmp/n8n_integration_snippet.xml
-
-echo ">>> Insertion dans ossec.conf..."
-docker exec "${GLOBAL_VARS["WAZUH_MANAGER_CONTAINER"]}" bash -c "sed -i '/<\/ossec_config>/e cat /tmp/n8n_integration_snippet.xml' /var/ossec/etc/ossec.conf"
-
-echo ">>> Intégration Wazuh <-> N8N terminée avec succès."
-
-
 #Redémarrer le service Wazuh Manager
 echo ">>> Redémarrage du service Wazuh Manager..."
 sleep 15 # On se rassure que le conteneur est totalement libéré de tout usage !
@@ -805,30 +811,40 @@ fi
 
 
 
-echo "-----------------------------------------------------------"
-echo "           CONFIGURATION POST - DÉPLOIEMENT               "
-echo "-----------------------------------------------------------"
+# echo "-----------------------------------------------------------"
+# echo "           CONFIGURATION POST - DÉPLOIEMENT               "
+# echo "-----------------------------------------------------------"
 
-# 17. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
+# # 17. Demander à l'utilisateur s'il souhaite effectuer les configurations post-installation
 
-read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
+# read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
 
-# Validation de l'entrée utilisateur
-while [[ ! "$POST_INSTALL_CHOICE" =~ ^[YyNn]$ ]]; do
-    echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
-    read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
-done
+# # Validation de l'entrée utilisateur
+# while [[ ! "$POST_INSTALL_CHOICE" =~ ^[YyNn]$ ]]; do
+#     echo "Veuillez entrer 'y' pour oui ou 'n' pour non."
+#     read -r -p "Souhaitez-vous effectuer les configurations post-installation maintenant ? (y/n) : " POST_INSTALL_CHOICE
+# done
 
-if [[ "$POST_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
-    echo ">>> Début des configurations post-installation..."
-    chmod +x post_install.sh
-    ./post_install.sh "${GLOBAL_VARS[@]}"
-else
-    echo ">>> Configuration post-installation ignorée."
-    echo "Installation terminée."
-    echo " "
-    echo " "
-fi
+# if [[ "$POST_INSTALL_CHOICE" =~ ^[Yy]$ ]]; then
+#     echo ">>> Début des configurations post-installation..."
+#     chmod +x post_install.sh
+#     ./post_install.sh "${GLOBAL_VARS[@]}"
+# else
+#     echo ">>> Configuration post-installation ignorée."
+#     echo "Installation terminée."
+#     echo " "
+#     echo " "
+# fi
+
+echo ">>> Sauvegarde des variables globales dans ${RUPA_ENV_FILE}"
+{
+    echo "${DEPLOYED_FLAG}=true"
+    echo "DEPLOY_DATE=$(date +%F)"
+    for k in "${!GLOBAL_VARS[@]}"; do
+        printf "%s=%q\n" "$k" "${GLOBAL_VARS[$k]}"
+    done
+} >> "$RUPA_ENV_FILE"
+
 
 # 20. Affichage des identifiants par défaut et du message de fin
 
@@ -888,14 +904,17 @@ echo "Identifiants WAZUH par défaut :"
 echo "Nom d'utilisateur : admin"
 echo "Mot de passe : SecretPassword"
 echo " "
-echo " "
 
-echo "Identifiants N8N par défaut :"
-echo "Nom d'utilisateur : ${GLOBAL_VARS["N8N_DEFAULT_USER"]}"
-echo "Mot de passe : ${GLOBAL_VARS["N8N_DEFAULT_PASS"]}"
-echo " "
-echo " "
+# echo "Identifiants N8N par défaut :"
+# echo "Nom d'utilisateur : ${GLOBAL_VARS["N8N_DEFAULT_USER"]}"
+# echo "Mot de passe : ${GLOBAL_VARS["N8N_DEFAULT_PASS"]}"
+# echo " "
+# echo " "
 
+echo " "
+echo "Lintégration Wazuh <-> n8n peut se faire via le script post-install.sh"
+echo " "
+echo " "
 echo "Merci d'avoir installé RUPA System <3"
 
 exit 0
