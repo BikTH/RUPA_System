@@ -56,7 +56,7 @@ fi
 RUPA_STATE_DIR="/var/lib/rupa"
 RUPA_ENV_FILE="${RUPA_STATE_DIR}/.env"
 DEPLOYED_FLAG="RUPA_DEPLOYED"
-chmod +x post_install.sh #rendre lescript post_install.sh exécutable
+chmod +x post_install.sh #rendre le script post_install.sh exécutable
 
 # -----------------------------------------------------------------------------
 # 0.  PERSISTANCE PREMIER OU SECOND LANCEMENT
