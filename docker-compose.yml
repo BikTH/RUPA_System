@@ -247,6 +247,7 @@ volumes:
   wazuh_wodles:
   wazuh_shared:
   wazuh_decoders:
+  wazuh_rules:
   filebeat_etc:
   filebeat_var:
   wazuh-indexer-data:
