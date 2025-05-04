@@ -903,6 +903,8 @@ echo " "
 echo "Identifiants WAZUH par défaut :"
 echo "Nom d'utilisateur : admin"
 echo "Mot de passe : SecretPassword"
+echo "Nom d'utilisateur API : ${GLOBAL_VARS["API_USERNAME"]}"
+echo "Mot de passe API: ${GLOBAL_VARS["API_PASSWORD"]}"
 echo " "
 
 # echo "Identifiants N8N par défaut :"
