@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+clear
+
 set -e
 
 echo "-----------------------------------------------------------"
@@ -100,8 +103,21 @@ docker exec "$WAZUH_MANAGER_CONTAINER" grep -q "n8n_webhook_integration" /var/os
 docker exec "$WAZUH_MANAGER_CONTAINER" rm -f "$TMP"
 
 # 4.  Créer l’utilisateur API n8n
-docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/bin/manage_users -l | grep -q "^n8n " || \
-docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/bin/manage_users -a n8n -r administrator -p "n8np@ss@pi"
+if ! docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/framework/python/bin/python3 \
+    /var/ossec/framework/scripts/create_user.py -l | grep -q "^n8n "; then
+    
+    echo ">>> Création de l'utilisateur API 'n8n' avec le rôle 'administrator'..."
+    docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/framework/python/bin/python3 \
+        /var/ossec/framework/scripts/create_user.py -a -u n8n -p "n8np@ss@pi" -r administrator
+
+    if [ $? -eq 0 ]; then
+        echo "Utilisateur API 'n8n' créé avec succès."
+    else
+        echo "Échec de la création de l'utilisateur API 'n8n'."
+    fi
+    else
+    echo "L'utilisateur API 'n8n' existe déjà. Aucune action nécessaire."
+fi
 
 # Restart wazuh
 echo "Redémarrage du conteneur $WAZUH_MANAGER_CONTAINER..."
