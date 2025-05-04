@@ -2,11 +2,15 @@
 
 clear
 
-set -e
-
 echo "-----------------------------------------------------------"
 echo "        [RUPA SYSTEM] POST-INSTALLATION SCRIPT             "
 echo "-----------------------------------------------------------"
+
+# Vérifier si le script est exécuté en tant que root
+if [ "$EUID" -ne 0 ]; then
+    echo ">>>>>>Veuillez exécuter ce script en tant que root (sudo)."
+    exit 1
+fi
 
 RUPA_ENV="/var/lib/rupa/.env"
 
