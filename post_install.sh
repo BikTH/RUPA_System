@@ -96,32 +96,40 @@ docker cp "$INTEG_DIR/n8n_webhook.sh" "${WAZUH_MANAGER_CONTAINER}":/var/ossec/in
 
 # 3.  Injecter le snippet <integration> si absent
 TMP="/tmp/n8n_integ.xml"
-docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/n8n_integration_snippet.xml "${WAZUH_MANAGER_CONTAINER}":"$TMP"
+CONTAINER_CONF_PATH="/var/ossec/etc/ossec.conf"
 
-docker exec "$WAZUH_MANAGER_CONTAINER" grep -q "n8n_webhook_integration" /var/ossec/etc/ossec.conf || \
-docker exec "$WAZUH_MANAGER_CONTAINER" bash -c "
-    sed -i '/<\/ossec_config>/{
+#Vérifie si l'intégration N8N est déjà présente
+docker exec "$WAZUH_MANAGER_CONTAINER" grep -q "n8n_webhook_integration" "$CONTAINER_CONF_PATH"
+
+#Si elle n'est pas présente, insère le snippet AVANT la dernière ligne (</ossec_config>)
+if [ $? -ne 0 ]; then
+    docker exec "$WAZUH_MANAGER_CONTAINER" bash -c "
+        sed -i '\#</ossec_config>#{
         r $TMP
-    }' /var/ossec/etc/ossec.conf
-"
+        }' $CONTAINER_CONF_PATH"
+    echo "Configurations N8N insérées avec succès."
+else
+    echo "L'intégration N8N est déjà présente!..."
+fi
+# Supprimer le fichier temporaire
 docker exec "$WAZUH_MANAGER_CONTAINER" rm -f "$TMP"
 
-# 4.  Créer l’utilisateur API n8n
-# if ! docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/framework/python/bin/python3 \
-#     /var/ossec/framework/scripts/create_user.py -l | grep -q "^n8n "; then
+# 4.  Créer lutilisateur API n8n
+if ! docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/framework/python/bin/python3 \
+    /var/ossec/framework/scripts/create_user.py -l | grep -q "^n8n "; then
     
-#     echo ">>> Création de l'utilisateur API 'n8n' avec le rôle 'administrator'..."
-#     docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/framework/python/bin/python3 \
-#         /var/ossec/framework/scripts/create_user.py -a -u n8n -p "n8np@ss@pi" -r administrator
+    echo ">>> Création de l'utilisateur API 'n8n' avec le rôle 'administrator'..."
+    docker exec "$WAZUH_MANAGER_CONTAINER" /var/ossec/framework/python/bin/python3 \
+        /var/ossec/framework/scripts/create_user.py -a -u n8n -p "n8np@ss@pi" -r administrator
 
-#     if [ $? -eq 0 ]; then
-#         echo "Utilisateur API 'n8n' créé avec succès."
-#     else
-#         echo "Échec de la création de l'utilisateur API 'n8n'."
-#     fi
-#     else
-#     echo "L'utilisateur API 'n8n' existe déjà. Aucune action nécessaire."
-# fi
+    if [ $? -eq 0 ]; then
+        echo "Utilisateur API 'n8n' créé avec succès."
+    else
+        echo "Échec de la création de l'utilisateur API 'n8n'."
+    fi
+    else
+    echo "L'utilisateur API 'n8n' existe déjà. Aucune action nécessaire."
+fi
 
 # Restart wazuh
 echo "Redémarrage du conteneur $WAZUH_MANAGER_CONTAINER..."
