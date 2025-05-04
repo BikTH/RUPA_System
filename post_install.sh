@@ -98,8 +98,12 @@ docker cp "$INTEG_DIR/n8n_webhook.sh" "${WAZUH_MANAGER_CONTAINER}":/var/ossec/in
 TMP="/tmp/n8n_integ.xml"
 docker cp ./wazuh/config/wazuh_cluster/fichiers_preconfig/n8n_integration_snippet.xml "${WAZUH_MANAGER_CONTAINER}":"$TMP"
 
-docker exec "$WAZUH_MANAGER_CONTAINER" grep -q "n8n_webhook_integration" /var/ossec/etc/ossec.conf || docker exec "$WAZUH_MANAGER_CONTAINER" \
-    bash -c "sed -i '/<\/ossec_config>/e cat $TMP' /var/ossec/etc/ossec.conf"
+docker exec "$WAZUH_MANAGER_CONTAINER" grep -q "n8n_webhook_integration" /var/ossec/etc/ossec.conf || \
+docker exec "$WAZUH_MANAGER_CONTAINER" bash -c "
+    sed -i '/<\/ossec_config>/{
+        r $TMP
+    }' /var/ossec/etc/ossec.conf
+"
 docker exec "$WAZUH_MANAGER_CONTAINER" rm -f "$TMP"
 
 # 4.  Créer l’utilisateur API n8n
