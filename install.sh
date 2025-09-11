@@ -557,8 +557,6 @@ echo ">>> Mise à jour du fichier suricata.yaml avec l'adresse IP de Suricata...
 SURICATA_YAML_PATH="wazuh/config/wazuh_suricata/suricata.yaml"
 
 if [ -f "$SURICATA_YAML_PATH" ]; then
-    ## sed -i "s/\${SURICATA_IP}/${GLOBAL_VARS["WAZUH_SURICATA_IP"]}\/24/g" "$SURICATA_YAML_PATH"
-    # Remplacer l'ancien placeholder IP par la nouvelle variable HOME_NET
     sed -i "s/\${SURICATA_IP}/${GLOBAL_VARS["SURICATA_HOME_NET"]}/g" "$SURICATA_YAML_PATH"
     sed -i "s/\${SURICATA_INT}/${GLOBAL_VARS["INTERFACE_RESEAU"]}/g" "$SURICATA_YAML_PATH"
     echo "suricata.yaml mis à jour."
