@@ -552,7 +552,7 @@ echo "Fichier .env créé avec succès."
 
 # 11. Mise à jour du fichier suricata.yaml
 
-echo ">>> Mise à jour du fichier suricata.yaml avec l'adresse IP de Suricata..."
+echo ">>> Mise à jour du fichier suricata.yaml avec les adresses réseau interne..."
 
 SURICATA_YAML_PATH="wazuh/config/wazuh_suricata/suricata.yaml"
 
@@ -560,7 +560,7 @@ if [ -f "$SURICATA_YAML_PATH" ]; then
     # Échapper les caractères spéciaux de sed dans la valeur à injecter (/)
     HOME_NET_RAW=${GLOBAL_VARS["SURICATA_HOME_NET"]}
     HOME_NET_ESC=${HOME_NET_RAW//&/\\&}   # échappe les backslashes
-    sed -i "s/\${SURICATA_IP}/${HOME_NET_ESC}/g" "$SURICATA_YAML_PATH"
+    sed -i "s|\${SURICATA_IP}|${HOME_NET_ESC}|g" "$SURICATA_YAML_PATH"
     sed -i "s/\${SURICATA_INT}/${GLOBAL_VARS["INTERFACE_RESEAU"]}/g" "$SURICATA_YAML_PATH"
     echo "suricata.yaml mis à jour."
 else
