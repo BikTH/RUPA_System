@@ -302,10 +302,24 @@ GLOBAL_VARS["GENERIC_TIMEZONE"]=$detected_tz
 echo ">>> Détection des interfaces réseau disponibles..."
 
 # Lister les interfaces réseau Ethernet disponibles
-mapfile -t ETH_INTERFACES < <(find /sys/class/net -maxdepth 1 -regex ".*/\(\(e\|en\|eth\)[a-z0-9]*\)$" -exec basename {} \;)
+##mapfile -t ETH_INTERFACES < <(find /sys/class/net -maxdepth 1 -regex ".*/\(\(e\|en\|eth\)[a-z0-9]*\)$" -exec basename {} \;)
+# [NOUVEAU] Détection enrichie des interfaces Ethernet (strictement filaires)
+readarray -t ALL_IFACES < <(ls -1 /sys/class/net | sed 's#^.*/##')
+ETH_INTERFACES=()
+for ifc in "${ALL_IFACES[@]}"; do
+    [[ "$ifc" == "lo" ]] && continue
+    [[ "$ifc" =~ ^docker.*|^veth.*|^br.*|^tun.*|^tap.*|^wg.*|^wlan.* ]] && continue
+    if [[ "$ifc" =~ ^eth[0-9]+$ \
+        || "$ifc" =~ ^en[o|s|p][0-9a-zA-Z]+$ \
+        || "$ifc" =~ ^em[0-9]+$ \
+        || "$ifc" =~ ^p[0-9]+p[0-9]+s[0-9]+$ ]]; then
+        ETH_INTERFACES+=("$ifc")
+    fi
+done
 
 if [ ${#ETH_INTERFACES[@]} -lt 2 ]; then
     echo "Erreur : Au moins deux interfaces réseau Ethernet sont requises."
+    printf 'Interfaces trouvées: %s\n' "${ETH_INTERFACES[@]}"
     exit 1
 fi
 
@@ -325,13 +339,56 @@ SURICATA_INTERFACE=${ETH_INTERFACES[$SURICATA_IF_INDEX]}
 GLOBAL_VARS["INTERFACE_RESEAU"]=$SURICATA_INTERFACE
 
 # Récupérer les informations de l'interface Suricata
-SURICATA_IP=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}' | cut -d/ -f1)
-SURICATA_SUBNET=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}')
-SURICATA_GATEWAY=$(ip route | grep "dev $SURICATA_INTERFACE" | grep default | awk '{print $3}')
+##SURICATA_IP=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}' | cut -d/ -f1)
+##SURICATA_SUBNET=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}')
+##SURICATA_GATEWAY=$(ip route | grep "dev $SURICATA_INTERFACE" | grep default | awk '{print $3}')
 
-GLOBAL_VARS["WAZUH_SURICATA_IP"]=$SURICATA_IP
-GLOBAL_VARS["WAZUH_SURICATA_SUBNET"]=$SURICATA_SUBNET
-GLOBAL_VARS["WAZUH_SURICATA_GATEWAY"]=$SURICATA_GATEWAY
+# [NOUVEAU] Saisie/validation des réseaux internes sous forme CIDR (un ou plusieurs)
+validate_cidr() {
+    local cidr="$1"
+    # Regex IP/mask
+    if [[ ! "$cidr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$ ]]; then
+        return 1
+    fi
+    local ip="${cidr%%/*}"; local mask="${cidr##*/}"
+    IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+    for o in "$o1" "$o2" "$o3" "$o4"; do
+        [[ "$o" =~ ^[0-9]+$ ]] && (( o >= 0 && o <= 255 )) || return 1
+    done
+    (( mask >=0 && mask <=32 )) || return 1
+    return 0
+}
+
+prompt_and_get_home_nets() {
+    local input=""
+    while true; do
+        echo
+        echo "Entrez le(s) réseau(x) interne(s) (A protéger) au format CIDR, séparés par des virgules."
+        echo "Exemples : 192.168.60.0/24   ou   192.168.60.0/24,10.0.0.0/8,172.16.0.0/12"
+        read -r -p "Réseaux internes (CIDR) : " input
+        input="$(echo "$input" | sed 's/[[:space:]]//g')"  # supprimer espaces
+        IFS=',' read -r -a cidrs <<< "$input"
+        (( ${#cidrs[@]} >= 1 )) || { echo "Veuillez saisir au moins un réseau en CIDR."; continue; }
+        local ok=1
+        for c in "${cidrs[@]}"; do
+            if ! validate_cidr "$c"; then
+                echo "CIDR invalide détecté: '$c'. Réessayez."
+                ok=0; break
+            fi
+        done
+        (( ok == 1 )) && { echo "Réseaux valides : $input"; SURICATA_HOME_NET="$input"; break; }
+    done
+}
+
+prompt_and_get_home_nets
+
+#GLOBAL_VARS["WAZUH_SURICATA_IP"]=$SURICATA_IP
+GLOBAL_VARS["WAZUH_SURICATA_IP"]=""
+#GLOBAL_VARS["WAZUH_SURICATA_SUBNET"]=$SURICATA_SUBNET
+GLOBAL_VARS["WAZUH_SURICATA_SUBNET"]="$SURICATA_HOME_NET"
+#GLOBAL_VARS["WAZUH_SURICATA_GATEWAY"]=$SURICATA_GATEWAY
+GLOBAL_VARS["WAZUH_SURICATA_GATEWAY"]=""        
+GLOBAL_VARS["SURICATA_HOME_NET"]="$SURICATA_HOME_NET"
 
 # Retirer l'interface sélectionnée de la liste
 temp_array=()
@@ -456,6 +513,7 @@ WAZUH_MANAGER_IP=${GLOBAL_VARS["WAZUH_MANAGER_IP"]}
 WAZUH_SURICATA_IP=${GLOBAL_VARS["WAZUH_SURICATA_IP"]}
 WAZUH_SURICATA_SUBNET=${GLOBAL_VARS["WAZUH_SURICATA_SUBNET"]}
 WAZUH_SURICATA_GATEWAY=${GLOBAL_VARS["WAZUH_SURICATA_GATEWAY"]}
+SURICATA_HOME_NET=${GLOBAL_VARS["SURICATA_HOME_NET"]}
 INTERFACE_RESEAU=${GLOBAL_VARS["INTERFACE_RESEAU"]}
 PUID=${GLOBAL_VARS["PUID"]}
 PGID=${GLOBAL_VARS["PGID"]}
@@ -499,7 +557,9 @@ echo ">>> Mise à jour du fichier suricata.yaml avec l'adresse IP de Suricata...
 SURICATA_YAML_PATH="wazuh/config/wazuh_suricata/suricata.yaml"
 
 if [ -f "$SURICATA_YAML_PATH" ]; then
-    sed -i "s/\${SURICATA_IP}/${GLOBAL_VARS["WAZUH_SURICATA_IP"]}\/24/g" "$SURICATA_YAML_PATH"
+    ## sed -i "s/\${SURICATA_IP}/${GLOBAL_VARS["WAZUH_SURICATA_IP"]}\/24/g" "$SURICATA_YAML_PATH"
+    # Remplacer l'ancien placeholder IP par la nouvelle variable HOME_NET
+    sed -i "s/\${SURICATA_IP}/${GLOBAL_VARS["SURICATA_HOME_NET"]}/g" "$SURICATA_YAML_PATH"
     sed -i "s/\${SURICATA_INT}/${GLOBAL_VARS["INTERFACE_RESEAU"]}/g" "$SURICATA_YAML_PATH"
     echo "suricata.yaml mis à jour."
 else
