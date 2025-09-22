@@ -164,7 +164,7 @@ IMAGES=(
     "rupadante/wazuh-certs-generator:0.0.2"
     "rupadante/suricata-wazuh:latest"
     "postgres:15"
-    "n8nio/n8n:1.42.2"
+    "n8nio/n8n:1.109.2"
     "wazuh/wazuh-dashboard:4.9.2"
     "wazuh/wazuh-manager:4.9.2"
     "wazuh/wazuh-indexer:4.9.2" 
