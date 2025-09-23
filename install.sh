@@ -338,6 +338,10 @@ done
 SURICATA_INTERFACE=${ETH_INTERFACES[$SURICATA_IF_INDEX]}
 GLOBAL_VARS["INTERFACE_RESEAU"]=$SURICATA_INTERFACE
 
+echo ">>> Activation de l'interface '$SURICATA_INTERFACE' et passage en mode promisccuous..."
+ip link set "$SURICATA_INTERFACE" up
+ip link set "$SURICATA_INTERFACE" promisc on
+
 # Récupérer les informations de l'interface Suricata
 ##SURICATA_IP=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}' | cut -d/ -f1)
 ##SURICATA_SUBNET=$(ip -o -f inet addr show "$SURICATA_INTERFACE" | awk '{print $4}')
