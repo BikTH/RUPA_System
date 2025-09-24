@@ -8,10 +8,6 @@
 </head>
 <body>
     <header>
-        <!-- Espace pour le logo de l'entreprise -->
-        <!-- <div id="company-logo">
-           <img src="img/PDC_Logo2.png" alt="Logo de l'entreprise">
-       </div> -->
        <a href="/"></pre><pre id="logo">
         ____    __  __  ____    ______                      
        /\  _`\ /\ \/\ \/\  _`\ /\  _  \                     
@@ -20,7 +16,6 @@
          \ \ \\ \\ \ \_\ \ \ \/  \ \ \/\ \                  
           \ \_\ \_\ \_____\ \_\   \ \_\ \_\                 
            \/_/\/ /\/_____/\/_/    \/_/\/_/                 
-                                                            
                                                             
         ____                     __                         
        /\  _`\                  /\ \__                      
@@ -32,30 +27,24 @@
                        /\___/                                
                        \/__/                                 
     </pre></a>
-       <!-- Signification de l'acronyme RUPA -->
-       <!-- <div id="acronym-meaning">
-           <p>Response Unified Prevention and Analysis System</p>
-       </div> -->
-       <!-- <nav>
-           <ul>
-               <li><a href="#">Accueil</a></li>
-               <li><a href="#">Applications</a></li>
-               <li><a href="#">Support</a></li>
-               <li><a href="#">Profil</a></li>
-           </ul>
-       </nav> -->
    </header>
+
     <main>
         <h1>Documentation</h1>
-        <p>Bienvenue dans la documentation de RUPA System. Ici, vous trouverez toutes les informations nécessaires pour utiliser et administrer efficacement la plateforme.</p>
+        <p>Bienvenue dans la documentation de RUPA System. Ici, vous trouverez toutes les informations nécessaires pour installer, configurer et administrer efficacement la plateforme.</p>
         
         <section class="documentation-section">
             <h2>Table des Matières</h2>
             <ul>
                 <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#architecture">Architecture & composants</a></li>
+                <li><a href="#pre-requis">Pré-requis</a></li>
                 <li><a href="#installation">Installation</a></li>
                 <li><a href="#configuration">Configuration</a></li>
                 <li><a href="#utilisation">Utilisation</a></li>
+                <li><a href="#sauvegarde">Sauvegarde & restauration</a></li>
+                <li><a href="#securite">Bonnes pratiques de sécurité</a></li>
+                <li><a href="#depannage">Dépannage</a></li>
                 <li><a href="#faq">FAQ</a></li>
                 <li><a href="#support">Support</a></li>
             </ul>
@@ -63,39 +52,202 @@
 
         <section id="introduction" class="documentation-section">
             <h2>Introduction</h2>
-            <p>RUPA System est une plateforme intégrée de surveillance, d'analyse et de réponse aux incidents, conçue pour les petites et moyennes entreprises. Cette documentation vous guidera à travers les différentes fonctionnalités et vous aidera à tirer le meilleur parti de la plateforme.</p>
+            <p>RUPA System est une plateforme intégrée de <strong>prévention</strong>, de <strong>détection</strong> et de <strong>réponse</strong> aux incidents, pensée pour les PME. Elle s’appuie sur des composants open-source (Wazuh, Suricata, n8n, EveBox, NGINX, Postgres) et s’intègre facilement dans un environnement virtualisé (ex. Proxmox). L’objectif : offrir une visibilité centralisée, des alertes pertinentes et des automatismes de réponse non intrusifs.</p>
+        </section>
+
+        <section id="architecture" class="documentation-section">
+            <h2>Architecture & composants</h2>
+            <ul>
+                <li><strong>Wazuh (SIEM/XDR)</strong> : collecte, corrélation et gestion des alertes hôtes/réseau.</li>
+                <li><strong>Suricata (NIDS)</strong> : détection réseau (IDS/NSM), export EVE JSON vers EveBox/Wazuh.</li>
+                <li><strong>EveBox</strong> : visualisation et tri des événements Suricata.</li>
+                <li><strong>n8n</strong> : orchestrations et réponses automatisées (SOAR léger).</li>
+                <li><strong>PostgreSQL</strong> : base de données (n8n).</li>
+                <li><strong>NGINX</strong> : reverse proxy et portail d’accès unifié (HTTPS).</li>
+            </ul>
+            <p><em>Optionnel :</em> intégration routeurs Mikrotik (port-mirror vers l’interface Suricata), VPN WireGuard, agents Wazuh Windows/Linux.</p>
+        </section>
+
+        <section id="pre-requis" class="documentation-section">
+            <h2>Pré-requis</h2>
+            <ul>
+                <li>Serveur Linux (Ubuntu Server 22.04 LTS recommandé) avec <code>git</code>, Internet, 2 interfaces réseau (gestion + capture).</li>
+                <li>CPU 4 vCPU, RAM 8–16 Go, SSD recommandé (≥ 200 Go selon rétention).</li>
+                <li>Port-mirroring configuré sur le routeur/commutateur vers l’interface de capture Suricata.</li>
+                <li>Accès HTTPS (443) exposé via NGINX (certificats auto-signés générés par <code>install.sh</code> ou certificats fournis).</li>
+            </ul>
         </section>
 
         <section id="installation" class="documentation-section">
             <h2>Installation</h2>
-            <p>Instructions détaillées pour installer RUPA System sur votre infrastructure.</p>
-            <!-- Ajoutez ici les étapes d'installation -->
+            <p>Le déploiement est <strong>automatisé</strong> par les scripts fournis. Suivez les étapes ci-dessous.</p>
+
+            <h3>1) Récupération du projet</h3>
+<pre><code>git clone https://github.com/BikTH/RUPA_System.git rupa-system
+cd rupa-system
+</code></pre>
+
+            <h3>2) Exécution du script d’installation (<code>install.sh</code>)</h3>
+            <p>Le script prépare l’hôte, installe Docker/Compose, génère les certificats (Wazuh + NGINX), configure Suricata (interface de capture) et lance la stack.</p>
+<pre><code>chmod +x install.sh
+sudo ./install.sh
+</code></pre>
+            <ul>
+                <li><strong>Actions réalisées :</strong> MAJ système, installation Docker/Compose, récupération des images, génération des certificats auto-signés, configuration guidée de Suricata, lancement des conteneurs (<code>wazuh-*</code>, <code>suricata</code>, <code>evebox</code>, <code>n8n</code>, <code>postgres</code>, <code>nginx</code>), intégrations de base.</li>
+                <li><strong>Sorties attendues :</strong> URLs d’accès (portail NGINX, Wazuh Dashboard, EveBox, n8n).</li>
+            </ul>
+
+            <h3>3) Finalisation post-déploiement (<code>post_install.sh</code>)</h3>
+            <p>Ce script finalise l’intégration Wazuh ⇄ n8n (webhook) et valide l’état des services.</p>
+<pre><code>chmod +x post_install.sh
+sudo ./post_install.sh
+</code></pre>
+            <ul>
+                <li>Renseigner l’URL du <strong>webhook n8n</strong> (créez au préalable un workflow n8n déclenché par webhook).</li>
+                <li>Le script ajoute l’intégration dans <code>ossec.conf</code>, crée un compte API dédié côté Wazuh et redémarre proprement le Manager si nécessaire.</li>
+            </ul>
+
+            <h3 id="installation-agent">4) Déploiement des agents Wazuh (Windows) — <code>install_wazuh_agent.ps1</code></h3>
+            <p>Installez l’agent Wazuh sur les postes/serveurs Windows pour la remontée des journaux et l’Active Response.</p>
+<pre><code># Sur un poste Windows (PowerShell en Administrateur)
+Set-ExecutionPolicy Bypass -Scope Process -Force
+cd C:\chemin\vers\scripts\
+.\install_wazuh_agent.ps1
+</code></pre>
+            <ul>
+                <li>Le script installe et enregistre l’agent auprès du Manager Wazuh (hôte/port/clé pré-remplis d’après l’installation).</li>
+                <li>Déploiement à l’échelle via GPO possible (copie du script + tâche planifiée / script de démarrage).</li>
+            </ul>
+
+            <h3>5) Contrôles rapides</h3>
+            <ul>
+                <li>Portail NGINX : <code>https://&lt;votre_hote&gt;/</code></li>
+                <li>Wazuh Dashboard : via portail (identifiants fournis en fin d’installation)</li>
+                <li>EveBox : <code>https://&lt;votre_hote&gt;/evebox</code></li>
+                <li>n8n : via portail (puis créez votre premier workflow “Alerte Wazuh → Notification/Action”)</li>
+            </ul>
         </section>
 
         <section id="configuration" class="documentation-section">
             <h2>Configuration</h2>
-            <p>Guide de configuration des différents modules de RUPA System.</p>
-            <!-- Ajoutez ici les étapes de configuration -->
+            <h3>1) Wazuh</h3>
+            <ul>
+                <li>Créer un groupe d’agents (ex. <code>Windows</code>, <code>Servers</code>, <code>Suricata</code>).</li>
+                <li>Activer les règles nécessaires (MITRE/Windows/Linux), FIM, vulnérabilités selon besoin.</li>
+                <li>Configurer intégrations sortantes (email/Slack/Telegram) si souhaité.</li>
+            </ul>
+
+            <h3>2) Suricata</h3>
+            <ul>
+                <li>Interface d’écoute définie lors de <code>install.sh</code> (ex. <code>ens19</code>).</li>
+                <li>Vérifier le flux SPAN : <code>sudo tcpdump -i &lt;iface_capture&gt; -nn -c 20</code>.</li>
+                <li>Règles locales : <code>wazuh/suricata/rules/</code> (personnalisation ciblée).</li>
+            </ul>
+
+            <h3>3) EveBox</h3>
+            <ul>
+                <li>Accès lecture directe du <code>eve.json</code> via volume partagé avec Suricata.</li>
+                <li>Filtrer/qualifier les alertes (signature, src/dst, fréquence).</li>
+            </ul>
+
+            <h3>4) n8n</h3>
+            <ul>
+                <li>Définir l’URL publique (derrière NGINX en HTTPS).</li>
+                <li>Créer un workflow “Alerte Wazuh → Action” via webhook (notification, ticket, appel API routeur, etc.).</li>
+                <li>Stocker les secrets dans les <em>Credentials</em> (jamais en clair).</li>
+            </ul>
+
+            <h3>5) NGINX</h3>
+            <ul>
+                <li>Reverse proxy HTTPS par défaut, redirections vers Wazuh/EveBox/n8n.</li>
+                <li>Remplacer les certificats auto-signés par des certificats de confiance si exposition externe.</li>
+            </ul>
         </section>
 
         <section id="utilisation" class="documentation-section">
             <h2>Utilisation</h2>
-            <p>Comment utiliser les fonctionnalités principales de RUPA System.</p>
-            <!-- Ajoutez ici les instructions d'utilisation -->
+            <h3>Parcours quotidien</h3>
+            <ol>
+                <li>Wazuh Dashboard : surveiller tendances, agents, règles déclenchées.</li>
+                <li>EveBox : trier/qualifier les alertes réseau Suricata.</li>
+                <li>n8n : exécuter les playbooks (notification, ticket, blocage IP local via Active Response, etc.).</li>
+                <li>Consigner l’incident (horodatage, impact, décision) et clôturer.</li>
+            </ol>
+
+            <h3>Maintenance hebdomadaire</h3>
+            <ul>
+                <li>Mises à jour conteneurs : <code>docker compose pull &amp;&amp; docker compose up -d</code></li>
+                <li>Revue des règles Suricata (réduction des faux positifs)</li>
+                <li>Export d’un rapport synthétique (automatisable via n8n)</li>
+            </ul>
+        </section>
+
+        <section id="sauvegarde" class="documentation-section">
+            <h2>Sauvegarde & restauration</h2>
+            <h3>Sauvegarde</h3>
+<pre><code># Dump Postgres (n8n)
+docker exec -t postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB &gt; backup/rupa_$(date +%F).sql
+
+# Volumes/configs (adapter les chemins)
+tar czf backup/suricata_$(date +%F).tgz ./suricata
+tar czf backup/nginx_$(date +%F).tgz ./reverse_proxy/nginx
+</code></pre>
+            <h3>Restauration</h3>
+<pre><code># Restaurer la DB n8n
+cat backup/rupa_YYYY-MM-DD.sql | docker exec -i postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
+</code></pre>
+        </section>
+
+        <section id="securite" class="documentation-section">
+            <h2>Bonnes pratiques de sécurité</h2>
+            <ul>
+                <li>Changer tous les mots de passe par défaut et activer 2FA si disponible.</li>
+                <li>Isoler les services (VLAN/ACL), limiter l’exposition publique (seul 443 via NGINX).</li>
+                <li>Centraliser la journalisation (Wazuh) ; activer FIM et détection de vulnérabilités.</li>
+                <li>Maintenir à jour images, règles Suricata et contenu Wazuh.</li>
+            </ul>
+        </section>
+
+        <section id="depannage" class="documentation-section">
+            <h2>Dépannage</h2>
+            <details>
+                <summary>Les conteneurs ne démarrent pas</summary>
+                <p>Vérifier <code>docker compose logs -f &lt;service&gt;</code>, l’espace disque (<code>df -h</code>), et les ports en conflit (<code>ss -tulpn</code>).</p>
+            </details>
+            <details>
+                <summary>Suricata ne voit aucun trafic</summary>
+                <p><code>tcpdump -i &lt;iface_capture&gt; -nn -c 50</code>. Vérifier le port-mirror et l’interface dans <code>suricata.yaml</code> (interface en mode écoute, sans IP).</p>
+            </details>
+            <details>
+                <summary>Webhook n8n non atteint depuis Wazuh</summary>
+                <p>Exposer n8n en HTTPS via NGINX et re-exécuter <code>post_install.sh</code> pour réinjecter le webhook si nécessaire.</p>
+            </details>
+            <details>
+                <summary>Aucun événement agent</summary>
+                <p>Contrôler l’installation de l’agent (Windows : <code>install_wazuh_agent.ps1</code>), la connectivité vers le Manager et le groupe assigné.</p>
+            </details>
         </section>
 
         <section id="faq" class="documentation-section">
             <h2>FAQ</h2>
-            <p>Réponses aux questions fréquemment posées.</p>
-            <!-- Ajoutez ici les questions et réponses -->
+            <p><strong>Q :</strong> Peut-on utiliser RUPA sans reverse proxy ?<br>
+               <strong>R :</strong> Oui en local, mais l’HTTPS via NGINX est recommandé (webhooks, sécurité, SSO futur).</p>
+
+            <p><strong>Q :</strong> Comment réduire les faux positifs Suricata ?<br>
+               <strong>R :</strong> Ajuster les règles (disable.conf), définir les réseaux internes, filtrer par segments sensibles.</p>
+
+            <p><strong>Q :</strong> Comment déployer l’agent Wazuh à grande échelle ?<br>
+               <strong>R :</strong> Via GPO (script PowerShell <code>install_wazuh_agent.ps1</code>) ou outil de gestion de parc.</p>
         </section>
 
         <section id="support" class="documentation-section">
             <h2>Support</h2>
-            <p>Informations sur la façon d'obtenir de l'aide et du support technique.</p>
-            <!-- Ajoutez ici les informations de support -->
+            <p>Pour toute question : ouvrir un ticket interne (flux n8n “Support”).<br>
+               Documentation interne : <code>/docs/</code> du dépôt. <br>
+               Mises à jour : fenêtre hebdomadaire + journal des changements (CHANGELOG).</p>
         </section>
     </main>
+
     <footer>
         <p>&copy; 2024 RUPA System | <a href="#">Mentions légales</a> | <a href="#">Contact</a> | <a href="#">Twitter</a> | <a href="#">LinkedIn</a></p>
     </footer>
